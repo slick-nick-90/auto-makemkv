@@ -18,6 +18,8 @@ function convert-sec {
     }
 }
 
+$movie=((Select-String -Pattern "CINFO:2,0," -path .\MakeMKVOutput.txt) -replace '"', "" -split ",")[-1]
+
 $dtrack=((Select-String -Pattern ",27,0" -path .\MakeMKVOutput.txt))
 $dname=((Select-String -Pattern ",27,0" -path .\MakeMKVOutput.txt)) -replace '"', ""
 $dmpl =((Select-String -Pattern ",16,0" -path .\MakeMKVOutput.txt)) -replace '"', ""
@@ -32,7 +34,7 @@ for ($num = 0 ; $num -lt ($dname.Length) ; $num++){
 
 $tinfos=Import-Csv .\in_names.txt
 foreach ($tinfo in $tinfos) {
-    $ttitle=$tinfo.title
+    $ttitle=$tinfo.title -replace ":", ""
     $mpl=""
     for ($num = 0 ; $num -lt ($dname.Length) ; $num++) {
         $ch1=convert-sec($dtime[$num])
@@ -40,12 +42,14 @@ foreach ($tinfo in $tinfos) {
         if ($ch1 -and ($ch1 -eq $ch2)) {
             $mpl=$dmpl[$num]
             $track=$dtrack[$num]
+            $name=$dname[$num]
         }
     }
     if ([string]::IsNullOrWhiteSpace($mpl)) {
         Write-Output "${ttitle} no mpl"
     } else {
         Write-Output "${ttitle} $mpl"
-        & "C:\Program Files (x86)\MakeMKV\makemkvcon.exe" --robot --minlength=90 mkv disc:0 $track "Dredd"
+        & "C:\Program Files (x86)\MakeMKV\makemkvcon.exe" --robot --minlength=90 mkv disc:0 $track "$movie"
+        move-item "$movie\$name" "$movie\$ttitle.mkv"
     }
 }
