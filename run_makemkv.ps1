@@ -18,21 +18,23 @@ function convert-sec {
     }
 }
 
-$movie=((Select-String -Pattern "CINFO:2,0," -path .\MakeMKVOutput.txt) -replace '"', "" -split ",")[-1]
+$makemkvlog=".\MakeMKVOutput.txt"
+$movie=((Select-String -Pattern "CINFO:2,0," -path $makemkvlog) -replace '"', "" -split ",")[-1]
 
-$dtrack=((Select-String -Pattern ",27,0" -path .\MakeMKVOutput.txt))
-$dname=((Select-String -Pattern ",27,0" -path .\MakeMKVOutput.txt)) -replace '"', ""
-$dmpl =((Select-String -Pattern ",16,0" -path .\MakeMKVOutput.txt)) -replace '"', ""
-$dtime=((Select-String -Pattern  ",9,0" -path .\MakeMKVOutput.txt)) -replace '"', ""
+$dtrack=((Select-String -Pattern ",27,0" -path $makemkvlog))
+$dname =((Select-String -Pattern ",27,0" -path $makemkvlog)) -replace '"', ""
+$dmpl  =((Select-String -Pattern ",16,0" -path $makemkvlog)) -replace '"', ""
+$dtime= ((Select-String -Pattern  ",9,0" -path $makemkvlog)) -replace '"', ""
 
 for ($num = 0 ; $num -lt ($dname.Length) ; $num++){
     $dtrack[$num]=($dname[$num] -split ',' -split ':')[-4]
-    $dname[$num]=($dname[$num] -split ',')[-1]
-    $dmpl[$num]= ( $dmpl[$num] -split ',')[-1]
-    $dtime[$num]=($dtime[$num] -split ',')[-1]
+    $dname[$num] =($dname[$num] -split ',')[-1]
+    $dmpl[$num]  =( $dmpl[$num] -split ',')[-1]
+    $dtime[$num] =($dtime[$num] -split ',')[-1]
 }
-
-$tinfos=Import-Csv .\in_names.txt
+$extras="P:\Video\V_for_Vendetta (2006)\V_for_Vendetta-extras.txt"
+$tinfos=Import-Csv "$extras"
+mkdir "V for Vendetta"
 foreach ($tinfo in $tinfos) {
     $ttitle=$tinfo.title -replace ":", ""
     $mpl=""
@@ -49,7 +51,7 @@ foreach ($tinfo in $tinfos) {
         Write-Output "${ttitle} no mpl"
     } else {
         Write-Output "${ttitle} $mpl"
-        & "C:\Program Files (x86)\MakeMKV\makemkvcon.exe" --robot --minlength=90 mkv disc:0 $track "$movie"
+        & makemkvcon.exe --robot --minlength=90 mkv disc:0 $track "$movie"
         move-item "$movie\$name" "$movie\$ttitle.mkv"
     }
 }
