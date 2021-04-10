@@ -1,8 +1,6 @@
-#auto-makemkv
+# auto-makemkv
 
-# to-do list
+## Goals list
 
-* convert to python
-* run_makemkv should be a function
-* add main feature detect and make mkv
-* get extra names and lengths from http://dvdcompare.net/
+- [ ] add main feature detect and make mkv
+- [ ] get extra names and lengths from http://dvdcompare.net/

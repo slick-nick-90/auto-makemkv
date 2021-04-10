@@ -1,2 +1,4 @@
 *.mkv
 *.txt
+*.pyc
+.vscode/
