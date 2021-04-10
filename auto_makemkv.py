@@ -1,4 +1,5 @@
 from datetime import datetime
+from shutil import copyfile
 import csv
 import re
 import os
@@ -29,17 +30,21 @@ def parse_makemkv(inputfile):
 	content = open(inputfile).read().replace("\n\r", "\n")
 	disc_info=fullmatch.findall(content)
 	movie=re.search("CINFO:2,0,\"(.*)\"\n",content).group(1)
+	if not movie:
+		print("error cannot find name of disc")
 
 	return movie,disc_info
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--extras", help="file path to extras csv")
+parser.add_argument("-m", "--minlength", help="min length of video in sec",default=90)
 args = parser.parse_args()
 
-# os.system("makemkvcon --robot --minlength=90 --messages=MakeMKVOutput.txt info disc:0")
-
-makemkvlog="MakeMKVOutput.txt"
+makemkvlog="_MakeMKVOutput.log"
+os.system("makemkvcon --robot --minlength={} --messages={} info disc:0".format(args.minlength,makemkvlog))
 movie, disc_info=parse_makemkv(makemkvlog)
+movielog=os.path.join(movie,makemkvlog)
+copyfile(makemkvlog, movielog)
 
 print(movie)
 
@@ -60,12 +65,14 @@ for tinfo in tinfos:
 			segmap=dsegmap
 			track=dtrack
 			outputfile=doutputfile
-	if os.path.exists(os.path.join(movie,title+".mkv")):
+	if not os.path.exists(os.path.join(movie,title+".mkv")):
 		if not segmap:
 			print("{} no segmap".format(title))
 		else:
 			print("{} {}".format(title,segmap))
-			cmd="makemkvcon.exe --robot --minlength=90 mkv disc:0 {} {}".format(track ,movie)
+			cmd="makemkvcon --robot --noscan --minlength={} mkv disc:0 {} \"{}\"".format(args.minlength,track ,movie)
 			print(cmd)
-			# os.system(cmd)
-			# os.rename(os.path.join(movie,outputfile), os.path.join(movie,title+".mkv"))
+			os.system(cmd)
+			os.rename(os.path.join(movie,outputfile), os.path.join(movie,title+".mkv"))
+	else:
+		print("skipping {}, already exists".format(os.path.join(movie,title+".mkv")))
