@@ -38,19 +38,26 @@ def parse_makemkv(inputfile):
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--extras", help="file path to extras csv")
 parser.add_argument("-m", "--minlength", help="min length of video in sec",default=90)
+parser.add_argument("-o", "--output", help="min length of video in sec",default="")
 args = parser.parse_args()
 
 makemkvlog="_MakeMKVOutput.log"
 os.system("makemkvcon --robot --minlength={} --messages={} info disc:0".format(args.minlength,makemkvlog))
 movie, disc_info=parse_makemkv(makemkvlog)
-movielog=os.path.join(movie,makemkvlog)
-copyfile(makemkvlog, movielog)
 
 print(movie)
+if args.output:
+	outDir=args.output
+else:
+	outDir=movie
+
+movielog=os.path.join(outDir,makemkvlog)
+copyfile(makemkvlog, movielog)
+
 
 tinfos=csv.reader(open(args.extras))
-if not os.path.exists(movie):
-    os.makedirs(movie)
+if not os.path.exists(outDir):
+    os.makedirs(outDir)
 for tinfo in tinfos:
 	ttitle, tlength=tinfo
 	if ttitle == "title":
@@ -65,14 +72,14 @@ for tinfo in tinfos:
 			segmap=dsegmap
 			track=dtrack
 			outputfile=doutputfile
-	if not os.path.exists(os.path.join(movie,title+".mkv")):
+	if not os.path.exists(os.path.join(outDir,title+".mkv")):
 		if not segmap:
 			print("{} no segmap".format(title))
 		else:
 			print("{} {}".format(title,segmap))
-			cmd="makemkvcon --robot --noscan --minlength={} mkv disc:0 {} \"{}\"".format(args.minlength,track ,movie)
+			cmd="makemkvcon --robot --noscan --minlength={} mkv disc:0 {} \"{}\"".format(args.minlength,track ,outDir)
 			print(cmd)
 			os.system(cmd)
-			os.rename(os.path.join(movie,outputfile), os.path.join(movie,title+".mkv"))
+			os.rename(os.path.join(outDir,outputfile), os.path.join(outDir,title+".mkv"))
 	else:
-		print("skipping {}, already exists".format(os.path.join(movie,title+".mkv")))
+		print("skipping {}, already exists".format(os.path.join(outDir,title+".mkv")))
