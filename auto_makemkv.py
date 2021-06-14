@@ -37,7 +37,7 @@ def parse_makemkv(inputfile):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--extras", help="file path to extras csv")
-parser.add_argument("-m", "--minlength", help="min length of video in sec",default=90)
+parser.add_argument("-m", "--minlength", help="min length of video in sec",default=40)
 parser.add_argument("-o", "--output", help="min length of video in sec",default="")
 args = parser.parse_args()
 
@@ -58,6 +58,7 @@ copyfile(makemkvlog, movielog)
 tinfos=csv.reader(open(args.extras))
 if not os.path.exists(outDir):
     os.makedirs(outDir)
+nosegmap=[]
 for tinfo in tinfos:
 	ttitle, tlength=tinfo
 	if ttitle == "title":
@@ -75,6 +76,7 @@ for tinfo in tinfos:
 	if not os.path.exists(os.path.join(outDir,title+".mkv")):
 		if not segmap:
 			print("{} no segmap".format(title))
+			nosegmap.append(" - {},{}".format(title,tlength))
 		else:
 			print("{} {}".format(title,segmap))
 			cmd="makemkvcon --robot --noscan --minlength={} mkv disc:0 {} \"{}\"".format(args.minlength,track ,outDir)
@@ -83,3 +85,8 @@ for tinfo in tinfos:
 			os.rename(os.path.join(outDir,outputfile), os.path.join(outDir,title+".mkv"))
 	else:
 		print("skipping {}, already exists".format(os.path.join(outDir,title+".mkv")))
+
+if nosegmap:
+	print("the following tracks were not matched, check the length:")
+	print("\n".join(nosegmap))
+	print()
