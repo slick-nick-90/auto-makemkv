@@ -54,8 +54,8 @@ else:
 movielog=os.path.join(outDir,makemkvlog)
 copyfile(makemkvlog, movielog)
 
-
-tinfos=csv.reader(open(args.extras))
+f=open(args.extras)
+tinfos=csv.reader(f)
 if not os.path.exists(outDir):
     os.makedirs(outDir)
 nosegmap=[]
@@ -90,3 +90,5 @@ if nosegmap:
 	print("the following tracks were not matched, check the length:")
 	print("\n".join(nosegmap))
 	print()
+
+f.close()
