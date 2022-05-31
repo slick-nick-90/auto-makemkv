@@ -1,27 +1,26 @@
-from datetime import datetime
-from shutil import copyfile
 from pathlib import Path
 import csv
 import re
 import os
 import sys
-import argparse
+from argparse import ArgumentParser
 
 delims = {
 	".tsv": "\t",
 	".csv": ",",
 }
 
+parser = ArgumentParser()
+parser.add_argument("-e", "--extras", help="file path to extras csv")
+parser.add_argument("-l", "--minlength", help="min length of video in sec",default=40)
+parser.add_argument("-o", "--output", help="min length of video in sec",default="")
+
 def convert_sec(duration):
-	if (re.match(r'\d+:\d+:\d+',duration)):
-		pt = datetime.strptime(duration,'%H:%M:%S')
-		ts = pt.second + pt.minute*60 + pt.hour*3600
-	elif (re.match(r'\d+:\d+',duration)):
-		pt = datetime.strptime(duration,'%M:%S')
-		ts = pt.second + pt.minute*60
-	else:
-		print('cannot convert "{}" to seconds'.format(duration))
-	return ts
+	try:
+		secs = sum(int(x) * 60 ** i for i, x in enumerate(reversed(duration.split(':'))))
+	except:
+		raise Exception(f"cannot convert '{duration}' to sec")
+	return secs
 
 def parse_makemkv(inputfile):
 	""" # from https://www.makemkv.com/forum2/viewtopic.php?f=1&t=7680#p42661
@@ -42,10 +41,6 @@ def parse_makemkv(inputfile):
 
 	return movie,disc_info
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-e", "--extras", help="file path to extras csv")
-parser.add_argument("-m", "--minlength", help="min length of video in sec",default=40)
-parser.add_argument("-o", "--output", help="min length of video in sec",default="")
 def main(argv=sys.argv[1:]):
 	args = parser.parse_args(argv)
 
@@ -59,21 +54,23 @@ def main(argv=sys.argv[1:]):
 	if not os.path.exists(outDir):
 		os.makedirs(outDir)
 	os.chdir(outDir)
-	makemkvlog="_MakeMKVOutput.log"
-	print(cmd)
-	cmd=f"makemkvcon --robot --minlength={args.minlength} --messages {makemkvlog} info disc:0"
-	os.system(cmd)
-	movie, disc_info=parse_makemkv(makemkvlog)
-	print(movie)
-	
+
 	tinfos=[]
 	with open(args.extras) as f:
 		cinfos=csv.reader(f,delimiter=delimiter)
 		for i in cinfos:
 			if len(i) !=2:
 				raise Exception(f"missing track info at:\n    {cinfos}")
+			i[1]=convert_sec(i[1])
 			tinfos.append(i)
 
+	makemkvlog="_MakeMKVOutput.log"
+	cmd=f"makemkvcon --robot --minlength={args.minlength} --messages={makemkvlog} info disc:0"
+	print(cmd)
+	os.system(cmd)
+	movie, disc_info=parse_makemkv(makemkvlog)
+	print(movie)
+	
 	nosegmap=[]
 	for tinfo in tinfos:
 		ttitle, tlength=tinfo
@@ -84,7 +81,7 @@ def main(argv=sys.argv[1:]):
 		for d in disc_info:
 			dtrack,dlength,dsegmap,doutputfile = d
 			ds=convert_sec(dlength)
-			ts=convert_sec(tlength)
+			ts=tlength
 			if (ds and (ds == ts)):
 				segmap=dsegmap
 				track=dtrack
@@ -92,10 +89,10 @@ def main(argv=sys.argv[1:]):
 		if not os.path.exists(os.path.join(outDir,title+".mkv")):
 			if not segmap:
 				print("{} no segmap".format(title))
-				nosegmap.append(" - {},{}".format(title,tlength))
+				nosegmap.append(f" - {title},{tlength}")
 			else:
-				print("{} {}".format(title,segmap))
-				cmd="makemkvcon --robot --noscan --minlength={args.minlength} mkv disc:0 {track} \"{outDir}\""
+				print(f"{title} {segmap}")
+				cmd=f"makemkvcon --robot --noscan --minlength={args.minlength} mkv disc:0 {track} ."
 				print(cmd)
 				os.system(cmd)
 				os.rename(os.path.join(outDir,outputfile), os.path.join(outDir,title+".mkv"))
