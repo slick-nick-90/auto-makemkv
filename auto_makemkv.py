@@ -24,7 +24,7 @@ def convert_sec(duration):
 	return secs
 
 def parse_makemkv(inputfile):
-	""" # from https://www.makemkv.com/forum2/viewtopic.php?f=1&t=7680#p42661
+	"""	# from https://www.makemkv.com/forum2/viewtopic.php?f=1&t=7680#p42661
 		ap_iaChapterCount=8,
 		ap_iaDuration=9,
 		ap_iaPlaylist=16,
@@ -34,7 +34,8 @@ def parse_makemkv(inputfile):
 
 	fullmatch = re.compile(r'TINFO:(?P<title>\d+),9,0,"(?P<duration>[\d:]+)".+?TINFO:(?P=title),16,0,"(?P<playlist>\d+?.m..s)".+?TINFO:(?P=title),27,0,"(?P<outputfile>.+?mkv)"', re.DOTALL)
 
-	content = open(inputfile).read().replace("\n\r", "\n")
+	with open(inputfile) as f:
+		content = f.read().replace("\n\r", "\n")
 	disc_info=fullmatch.findall(content)
 	movie=re.search("CINFO:2,0,\"(.*)\"\n",content).group(1)
 	if not movie:
