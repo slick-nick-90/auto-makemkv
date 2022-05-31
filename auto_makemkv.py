@@ -1,9 +1,15 @@
 from datetime import datetime
 from shutil import copyfile
+from pathlib import Path
 import csv
 import re
 import os
 import argparse
+
+delims = {
+	".tsv": "\t",
+	".csv": ",",
+}
 
 def convert_sec(duration):
 	if (re.match(r'\d+:\d+:\d+',duration)):
@@ -41,29 +47,31 @@ parser.add_argument("-m", "--minlength", help="min length of video in sec",defau
 parser.add_argument("-o", "--output", help="min length of video in sec",default="")
 args = parser.parse_args()
 
-makemkvlog="_MakeMKVOutput.log"
-os.system("makemkvcon --robot --minlength={} --messages={} info disc:0".format(args.minlength,makemkvlog))
-movie, disc_info=parse_makemkv(makemkvlog)
+delimiter=delims[Path(args.extras).suffix]
 
-print(movie)
+
 if args.output:
 	outDir=args.output
 else:
-	outDir=movie
+	outDir=os.path.dirname(os.path.abspath(args.extras))
 
-movielog=os.path.join(outDir,makemkvlog)
-copyfile(makemkvlog, movielog)
-
-f=open(args.extras)
-tinfos=csv.reader(f)
 if not os.path.exists(outDir):
     os.makedirs(outDir)
+os.chdir(outDir)
+makemkvlog="_MakeMKVOutput.log"
+cmd=f"makemkvcon --robot --minlength={args.minlength} --messages {makemkvlog} info disc:0"
+os.system(cmd)
+movie, disc_info=parse_makemkv(makemkvlog)
+print(movie)
+f=open(args.extras)
+
+tinfos=csv.reader(f,delimiter=delimiter)
 nosegmap=[]
 for tinfo in tinfos:
 	ttitle, tlength=tinfo
 	if ttitle == "title":
 		continue
-	title=ttitle.replace(":", "")
+	title=ttitle.replace(":", "").replace('"', "")
 	segmap=""
 	for d in disc_info:
 		dtrack,dlength,dsegmap,doutputfile = d
@@ -79,7 +87,7 @@ for tinfo in tinfos:
 			nosegmap.append(" - {},{}".format(title,tlength))
 		else:
 			print("{} {}".format(title,segmap))
-			cmd="makemkvcon --robot --noscan --minlength={} mkv disc:0 {} \"{}\"".format(args.minlength,track ,outDir)
+			cmd="makemkvcon --robot --noscan --minlength={args.minlength} mkv disc:0 {track} \"{outDir}\""
 			print(cmd)
 			os.system(cmd)
 			os.rename(os.path.join(outDir,outputfile), os.path.join(outDir,title+".mkv"))
