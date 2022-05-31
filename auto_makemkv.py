@@ -11,11 +11,12 @@ delims = {
 }
 
 parser = ArgumentParser()
-parser.add_argument("-e", "--extras", help="file path to extras csv")
+parser.add_argument("-e", "--extras", help="file path to extras csv or tsv")
 parser.add_argument("-l", "--minlength", help="min length of video in sec",default=40)
-parser.add_argument("-o", "--output", help="min length of video in sec",default="")
+parser.add_argument("-o", "--output", help="output directory, defaults to extras directory",default="")
 
 def convert_sec(duration):
+	# https://stackoverflow.com/questions/6402812/how-to-convert-an-hmmss-time-string-to-seconds-in-python
 	try:
 		secs = sum(int(x) * 60 ** i for i, x in enumerate(reversed(duration.split(':'))))
 	except:
