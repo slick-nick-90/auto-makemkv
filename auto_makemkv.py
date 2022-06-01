@@ -62,7 +62,7 @@ def main(argv=sys.argv[1:]):
 		cinfos=csv.reader(f,delimiter=delimiter)
 		for i in cinfos:
 			if len(i) !=2:
-				raise Exception(f"missing track info at:\n    {cinfos}")
+				raise Exception(f"missing track info at:\n    {i}")
 			i[1]=convert_sec(i[1])
 			tinfos.append(i)
 
