@@ -14,6 +14,7 @@ parser = ArgumentParser()
 parser.add_argument("-e", "--extras", help="file path to extras csv or tsv")
 parser.add_argument("-l", "--minlength", help="min length of video in sec",default=40)
 parser.add_argument("-o", "--output", help="output directory, defaults to extras directory",default="")
+parser.add_argument("-s", "--scan", action="store_true", help="force rescan of disc",default=False, )
 
 def convert_sec(duration):
 	# https://stackoverflow.com/questions/6402812/how-to-convert-an-hmmss-time-string-to-seconds-in-python
@@ -32,7 +33,11 @@ def parse_makemkv(inputfile):
 		ap_iaOutputFileName=27,
 	"""
 
-	fullmatch = re.compile(r'TINFO:(?P<title>\d+),9,0,"(?P<duration>[\d:]+)".+?TINFO:(?P=title),16,0,"(?P<playlist>\d+?.m..s)".+?TINFO:(?P=title),27,0,"(?P<outputfile>.+?mkv)"', re.DOTALL)
+	fullmatch = re.compile(
+		r'TINFO:(?P<title>\d+),9,0,"(?P<duration>[\d:]+)".+?'
+		r'TINFO:(?P=title),16,0,"(?P<playlist>\d+?.m..s)".+?'
+		r'TINFO:(?P=title),27,0,"(?P<outputfile>.+?mkv)"'
+	, re.DOTALL)
 
 	with open(inputfile) as f:
 		content = f.read().replace("\n\r", "\n")
@@ -67,9 +72,12 @@ def main(argv=sys.argv[1:]):
 			tinfos.append(i)
 
 	makemkvlog="_MakeMKVOutput.log"
-	cmd=f"makemkvcon --robot --minlength={args.minlength} --messages={makemkvlog} info disc:0"
-	print(cmd)
-	os.system(cmd)
+	if os.path.isfile(makemkvlog) and not args.scan:
+		print(f"{makemkvlog} already exits")
+	else:
+		cmd=f"makemkvcon --robot --minlength={args.minlength} --messages={makemkvlog} info disc:0"
+		print(cmd)
+		os.system(cmd)
 	movie, disc_info=parse_makemkv(makemkvlog)
 	print(movie)
 	
