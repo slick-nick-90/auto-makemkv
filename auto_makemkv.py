@@ -4,6 +4,7 @@ import re
 import os
 import sys
 from argparse import ArgumentParser
+from makemkv import MakeMKV
 
 delims = {
 	".tsv": "\t",
@@ -13,8 +14,9 @@ delims = {
 parser = ArgumentParser()
 parser.add_argument("-e", "--extras", help="file path to extras csv or tsv")
 parser.add_argument("-l", "--minlength", help="min length of video in sec",default=40)
+parser.add_argument("-d", "--disc", help="disc number",default=0)
 parser.add_argument("-o", "--output", help="output directory, defaults to extras directory",default="")
-parser.add_argument("-s", "--scan", action="store_true", help="force rescan of disc",default=False, )
+parser.add_argument("-s", "--scan", action="store_true", help="force rescan of disc",default=False)
 
 def convert_sec(duration):
 	# https://stackoverflow.com/questions/6402812/how-to-convert-an-hmmss-time-string-to-seconds-in-python
@@ -24,7 +26,7 @@ def convert_sec(duration):
 		raise Exception(f"cannot convert '{duration}' to sec")
 	return secs
 
-def parse_makemkv(inputfile):
+def parse_makemkv(inputfile,disc):
 	"""	# from https://www.makemkv.com/forum2/viewtopic.php?f=1&t=7680#p42661
 		ap_iaChapterCount=8,
 		ap_iaDuration=9,
@@ -32,21 +34,11 @@ def parse_makemkv(inputfile):
 		ap_iaSegmentsMap=26,
 		ap_iaOutputFileName=27,
 	"""
-
-	fullmatch = re.compile(
-		r'TINFO:(?P<title>\d+),9,0,"(?P<duration>[\d:]+)".+?'
-		r'TINFO:(?P=title),16,0,"(?P<playlist>\d+?.m..s)".+?'
-		r'TINFO:(?P=title),27,0,"(?P<outputfile>.+?mkv)"'
-	, re.DOTALL)
-
 	with open(inputfile) as f:
 		content = f.read().replace("\n\r", "\n")
-	disc_info=fullmatch.findall(content)
-	movie=re.search("CINFO:2,0,\"(.*)\"\n",content).group(1)
-	if not movie:
-		print("error cannot find name of disc")
-
-	return movie,disc_info
+	makemkv = MakeMKV(disc)
+	disc_info = makemkv._parse_makemkv(content.split("\n"))
+	return disc_info
 
 def main(argv=sys.argv[1:]):
 	args = parser.parse_args(argv)
@@ -75,11 +67,11 @@ def main(argv=sys.argv[1:]):
 	if os.path.isfile(makemkvlog) and not args.scan:
 		print(f"{makemkvlog} already exits")
 	else:
-		cmd=f"makemkvcon --robot --minlength={args.minlength} --messages={makemkvlog} info disc:0"
+		cmd=f"makemkvcon --robot --minlength={args.minlength} --messages={makemkvlog} info disc:{args.disc}"
 		print(cmd)
 		os.system(cmd)
-	movie, disc_info=parse_makemkv(makemkvlog)
-	print(movie)
+	disc_info=parse_makemkv(makemkvlog,args.disc)
+	print(disc_info["drives"][args.disc]["disc_name"])
 	
 	nosegmap=[]
 	for tinfo in tinfos:
@@ -88,8 +80,11 @@ def main(argv=sys.argv[1:]):
 			continue
 		title=ttitle.replace(":", "").replace('"', "")
 		segmap=""
-		for d in disc_info:
-			dtrack,dlength,dsegmap,doutputfile = d
+		for i,d in enumerate(disc_info['titles']):
+			dtrack=i
+			dlength = d["length"]
+			dsegmap = d["playlist_file"]
+			doutputfile = d["file_output"]
 			ds=convert_sec(dlength)
 			ts=tlength
 			if (ds and (ds == ts)):
