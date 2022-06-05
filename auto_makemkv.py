@@ -1,6 +1,6 @@
 from pathlib import Path
 import csv
-import re
+import json
 import os
 import sys
 from argparse import ArgumentParser
@@ -37,7 +37,7 @@ def parse_makemkv(inputfile,disc):
 	with open(inputfile) as f:
 		content = f.read().replace("\n\r", "\n")
 	makemkv = MakeMKV(disc)
-	disc_info = makemkv._parse_makemkv(content.split("\n"))
+	disc_info = makemkv._parse_makemkv_log(content.split("\n"))
 	return disc_info
 
 def main(argv=sys.argv[1:]):
@@ -66,11 +66,15 @@ def main(argv=sys.argv[1:]):
 	makemkvlog="_MakeMKVOutput.log"
 	if os.path.isfile(makemkvlog) and not args.scan:
 		print(f"{makemkvlog} already exits")
+		disc_info=parse_makemkv(makemkvlog,args.disc)
+	elif os.path.isfile("_MakeMKVOutput.json"):
+		with open("_MakeMKVOutput.json") as f:
+			disc_info=json.load(f)
 	else:
-		cmd=f"makemkvcon --robot --minlength={args.minlength} --messages={makemkvlog} info disc:{args.disc}"
-		print(cmd)
-		os.system(cmd)
-	disc_info=parse_makemkv(makemkvlog,args.disc)
+		makemkv= MakeMKV
+		disc_info = makemkv.info(minlength=args.minlengh)
+		with open("_MakeMKVOutput.json",'w') as f:
+			json.dump(f,disc_info)
 	print(disc_info["drives"][args.disc]["disc_name"])
 	
 	nosegmap=[]
@@ -97,9 +101,7 @@ def main(argv=sys.argv[1:]):
 				nosegmap.append(f" - {title},{tlength}")
 			else:
 				print(f"{title} {segmap}")
-				cmd=f"makemkvcon --robot --noscan --minlength={args.minlength} mkv disc:0 {track} ."
-				print(cmd)
-				os.system(cmd)
+				makemkv.mkv(title=track, output_dir=".")
 				os.rename(os.path.join(outDir,outputfile), os.path.join(outDir,title+".mkv"))
 		else:
 			print("skipping {}, already exists".format(os.path.join(outDir,title+".mkv")))
