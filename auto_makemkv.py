@@ -27,13 +27,6 @@ def convert_sec(duration):
 	return secs
 
 def parse_makemkv(inputfile,disc):
-	"""	# from https://www.makemkv.com/forum2/viewtopic.php?f=1&t=7680#p42661
-		ap_iaChapterCount=8,
-		ap_iaDuration=9,
-		ap_iaPlaylist=16,
-		ap_iaSegmentsMap=26,
-		ap_iaOutputFileName=27,
-	"""
 	with open(inputfile) as f:
 		content = f.read().replace("\n\r", "\n")
 	makemkv = MakeMKV(disc)
@@ -67,6 +60,8 @@ def main(argv=sys.argv[1:]):
 	if os.path.isfile(makemkvlog) and not args.scan:
 		print(f"{makemkvlog} already exits")
 		disc_info=parse_makemkv(makemkvlog,args.disc)
+		with open("_MakeMKVOutput.json",'w') as f:
+			json.dump(disc_info,f,indent=4)
 	elif os.path.isfile("_MakeMKVOutput.json"):
 		with open("_MakeMKVOutput.json") as f:
 			disc_info=json.load(f)
@@ -74,7 +69,7 @@ def main(argv=sys.argv[1:]):
 		makemkv= MakeMKV
 		disc_info = makemkv.info(minlength=args.minlengh)
 		with open("_MakeMKVOutput.json",'w') as f:
-			json.dump(f,disc_info)
+			json.dump(disc_info,f,indent=4)
 	print(disc_info["drives"][args.disc]["disc_name"])
 	
 	nosegmap=[]
