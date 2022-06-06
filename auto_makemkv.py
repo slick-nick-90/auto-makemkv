@@ -82,7 +82,7 @@ def main(argv=sys.argv[1:]):
 		for i,d in enumerate(disc_info['titles']):
 			dtrack=i
 			dlength = d["length"]
-			dsegmap = d["playlist_file"]
+			dsegmap = d["source_filename"]
 			doutputfile = d["file_output"]
 			ds=convert_sec(dlength)
 			ts=tlength
