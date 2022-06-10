@@ -61,15 +61,15 @@ def main(argv=sys.argv[1:]):
 		print(f"{makemkvlog} already exits")
 		disc_info=parse_makemkv(makemkvlog,args.disc)
 		with open("_MakeMKVOutput.json",'w') as f:
-			json.dump(disc_info,f,indent=4)
+			json.dump(disc_info, f, indent=2, sort_keys=True)
 	elif os.path.isfile("_MakeMKVOutput.json"):
 		with open("_MakeMKVOutput.json") as f:
 			disc_info=json.load(f)
 	else:
-		makemkv= MakeMKV
+		makemkv = MakeMKV(args.disc)
 		disc_info = makemkv.info(minlength=args.minlengh)
 		with open("_MakeMKVOutput.json",'w') as f:
-			json.dump(disc_info,f,indent=4)
+			json.dump(disc_info, f, indent=2, sort_keys=True)
 	print(disc_info["drives"][args.disc]["disc_name"])
 	
 	nosegmap=[]
