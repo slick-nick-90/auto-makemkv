@@ -57,6 +57,8 @@ def main(argv=sys.argv[1:]):
 			tinfos.append(i)
 
 	makemkvlog="_MakeMKVOutput.log"
+	makemkv = MakeMKV(args.disc)
+
 	if os.path.isfile(makemkvlog) and not args.scan:
 		print(f"{makemkvlog} already exits")
 		disc_info=parse_makemkv(makemkvlog,args.disc)
@@ -66,11 +68,10 @@ def main(argv=sys.argv[1:]):
 		with open("_MakeMKVOutput.json") as f:
 			disc_info=json.load(f)
 	else:
-		makemkv = MakeMKV(args.disc)
-		disc_info = makemkv.info(minlength=args.minlengh)
+		disc_info = makemkv.info(minlength=args.minlength)
 		with open("_MakeMKVOutput.json",'w') as f:
 			json.dump(disc_info, f, indent=2, sort_keys=True)
-	print(disc_info["drives"][args.disc]["disc_name"])
+	print(disc_info["disc"]["name"])
 	
 	nosegmap=[]
 	for tinfo in tinfos:
