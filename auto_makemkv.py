@@ -57,7 +57,7 @@ def main(argv=sys.argv[1:]):
 			tinfos.append(i)
 
 	makemkvlog="_MakeMKVOutput.log"
-	makemkvjsn="_MakeMKVOutput.log"
+	makemkvjsn="_MakeMKVOutput.json"
 	makemkv = MakeMKV(args.disc)
 
 	if os.path.isfile(makemkvlog) and not args.scan:
