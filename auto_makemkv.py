@@ -4,7 +4,7 @@ import json
 import os
 import sys
 from argparse import ArgumentParser
-from makemkv import MakeMKV
+from makemkv import MakeMKV, ProgressParser
 
 delims = {
 	".tsv": "\t",
@@ -58,55 +58,56 @@ def main(argv=sys.argv[1:]):
 
 	makemkvlog="_MakeMKVOutput.log"
 	makemkvjsn="_MakeMKVOutput.json"
-	makemkv = MakeMKV(args.disc)
+	with ProgressParser() as progress:
+		makemkv = MakeMKV(args.disc, progress_handler=progress.parse_progress)
 
-	if os.path.isfile(makemkvlog) and not args.scan:
-		print(f"{makemkvlog} already exits")
-		disc_info=parse_makemkv(makemkvlog,args.disc)
-		with open(makemkvjsn,'w') as f:
-			json.dump(disc_info, f, indent=2, sort_keys=True)
-	elif os.path.isfile(makemkvjsn):
-		with open(makemkvjsn) as f:
-			disc_info=json.load(f)
-	else:
-		disc_info = makemkv.info(minlength=args.minlength)
-		with open(makemkvjsn,'w') as f:
-			json.dump(disc_info, f, indent=2, sort_keys=True)
-	print(disc_info["disc"]["name"])
-	
-	nosegmap=[]
-	for tinfo in tinfos:
-		ttitle, tlength=tinfo
-		if ttitle == "title":
-			continue
-		title=ttitle.replace(":", "").replace('"', "")
-		segmap=""
-		for i,d in enumerate(disc_info['titles']):
-			dtrack=i
-			dlength = d["length"]
-			dsegmap = d["source_filename"]
-			doutputfile = d["file_output"]
-			ds=convert_sec(dlength)
-			ts=tlength
-			if (ds and (ds == ts)):
-				segmap=dsegmap
-				track=dtrack
-				outputfile=doutputfile
-		if not os.path.exists(os.path.join(outDir,title+".mkv")):
-			if not segmap:
-				print("{} no segmap".format(title))
-				nosegmap.append(f" - {title},{tlength}")
-			else:
-				print(f"{title} {segmap}")
-				makemkv.mkv(title=track, output_dir=".")
-				os.rename(os.path.join(outDir,outputfile), os.path.join(outDir,title+".mkv"))
+		if os.path.isfile(makemkvlog) and not args.scan:
+			print(f"{makemkvlog} already exits")
+			disc_info=parse_makemkv(makemkvlog,args.disc)
+			with open(makemkvjsn,'w') as f:
+				json.dump(disc_info, f, indent=2, sort_keys=True)
+		elif os.path.isfile(makemkvjsn):
+			with open(makemkvjsn) as f:
+				disc_info=json.load(f)
 		else:
-			print("skipping {}, already exists".format(os.path.join(outDir,title+".mkv")))
+			disc_info = makemkv.info(minlength=args.minlength)
+			with open(makemkvjsn,'w') as f:
+				json.dump(disc_info, f, indent=2, sort_keys=True)
+		print(disc_info["disc"]["name"])
+	
+		nosegmap=[]
+		for tinfo in tinfos:
+			ttitle, tlength=tinfo
+			if ttitle == "title":
+				continue
+			title=ttitle.replace(":", "").replace('"', "")
+			segmap=""
+			for i,d in enumerate(disc_info['titles']):
+				dtrack=i
+				dlength = d["length"]
+				dsegmap = d["source_filename"]
+				doutputfile = d["file_output"]
+				ds=convert_sec(dlength)
+				ts=tlength
+				if (ds and (ds == ts)):
+					segmap=dsegmap
+					track=dtrack
+					outputfile=doutputfile
+			if not os.path.exists(os.path.join(outDir,title+".mkv")):
+				if not segmap:
+					print("{} no segmap".format(title))
+					nosegmap.append(f" - {title},{tlength}")
+				else:
+					print(f"{title} {segmap}")
+					makemkv.mkv(title=track, output_dir=".")
+					os.rename(os.path.join(outDir,outputfile), os.path.join(outDir,title+".mkv"))
+			else:
+				print("skipping {}, already exists".format(os.path.join(outDir,title+".mkv")))
 
-	if nosegmap:
-		print("the following tracks were not matched, check the length:")
-		print("\n".join(nosegmap))
-		print()
+		if nosegmap:
+			print("the following tracks were not matched, check the length:")
+			print("\n".join(nosegmap))
+			print()
 
 if __name__ == "__main__":
 	main()
