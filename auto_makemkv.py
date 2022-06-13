@@ -57,19 +57,20 @@ def main(argv=sys.argv[1:]):
 			tinfos.append(i)
 
 	makemkvlog="_MakeMKVOutput.log"
+	makemkvjsn="_MakeMKVOutput.log"
 	makemkv = MakeMKV(args.disc)
 
 	if os.path.isfile(makemkvlog) and not args.scan:
 		print(f"{makemkvlog} already exits")
 		disc_info=parse_makemkv(makemkvlog,args.disc)
-		with open("_MakeMKVOutput.json",'w') as f:
+		with open(makemkvjsn,'w') as f:
 			json.dump(disc_info, f, indent=2, sort_keys=True)
-	elif os.path.isfile("_MakeMKVOutput.json"):
-		with open("_MakeMKVOutput.json") as f:
+	elif os.path.isfile(makemkvjsn):
+		with open(makemkvjsn) as f:
 			disc_info=json.load(f)
 	else:
 		disc_info = makemkv.info(minlength=args.minlength)
-		with open("_MakeMKVOutput.json",'w') as f:
+		with open(makemkvjsn,'w') as f:
 			json.dump(disc_info, f, indent=2, sort_keys=True)
 	print(disc_info["disc"]["name"])
 	
