@@ -1,10 +1,10 @@
-from pathlib import Path
 import csv
 import json
 import os
 import sys
 from argparse import ArgumentParser
 from makemkv import MakeMKV, ProgressParser
+from pathlib import Path
 
 delims = {
 	".tsv": "\t",
@@ -13,10 +13,10 @@ delims = {
 
 parser = ArgumentParser()
 parser.add_argument("-e", "--extras", help="file path to extras csv or tsv")
-parser.add_argument("-l", "--minlength", help="min length of video in sec",default=40)
-parser.add_argument("-d", "--disc", help="disc number",default=0)
-parser.add_argument("-o", "--output", help="output directory, defaults to extras directory",default="")
-parser.add_argument("-s", "--scan", action="store_true", help="force rescan of disc",default=False)
+parser.add_argument("-l", "--minlength", help="min length of video in sec", default=40)
+parser.add_argument("-d", "--disc", help="disc number", default=0)
+parser.add_argument("-o", "--output", help="output directory, defaults to extras directory", default="")
+parser.add_argument("-s", "--scan", action="store_true", help="force rescan of disc", default=False)
 
 def convert_sec(duration):
 	# https://stackoverflow.com/questions/6402812/how-to-convert-an-hmmss-time-string-to-seconds-in-python
@@ -55,9 +55,9 @@ def main(argv=sys.argv[1:]):
 				raise Exception(f"missing track info at:\n    {i}")
 			i[1]=convert_sec(i[1])
 			tinfos.append(i)
-
-	makemkvlog="_MakeMKVOutput.log"
-	makemkvjsn="_MakeMKVOutput.json"
+	extras_base = os.path.basename(os.path.splitext(args.extras)[0])
+	makemkvlog = extras_base + ".log"
+	makemkvjsn = extras_base + ".json"
 	with ProgressParser() as progress:
 		makemkv = MakeMKV(args.disc, progress_handler=progress.parse_progress)
 
@@ -99,7 +99,7 @@ def main(argv=sys.argv[1:]):
 					nosegmap.append(f" - {title},{tlength}")
 				else:
 					print(f"{title} {segmap}")
-					makemkv.mkv(title=track, output_dir=".")
+					makemkv.mkv(title=track, output_dir=".", minlength=args.minlength)
 					os.rename(os.path.join(outDir,outputfile), os.path.join(outDir,title+".mkv"))
 			else:
 				print("skipping {}, already exists".format(os.path.join(outDir,title+".mkv")))
