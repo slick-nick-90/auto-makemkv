@@ -2,8 +2,8 @@ import csv
 import json
 import os
 import sys
-from argparse import ArgumentParser
-from makemkv import MakeMKV, ProgressParser
+from argparse import ArgumentParser, BooleanOptionalAction
+from makemkv import MakeMKV
 from pathlib import Path
 
 delims = {
@@ -17,6 +17,7 @@ parser.add_argument("-l", "--minlength", help="min length of video in sec", defa
 parser.add_argument("-d", "--disc", help="disc number", default=0)
 parser.add_argument("-o", "--output", help="output directory, defaults to extras directory", default="")
 parser.add_argument("-s", "--scan", action="store_true", help="force rescan of disc", default=False)
+parser.add_argument('--progress_bar', action=BooleanOptionalAction, help="show progress bar", default=True)
 
 def convert_sec(duration):
 	# https://stackoverflow.com/questions/6402812/how-to-convert-an-hmmss-time-string-to-seconds-in-python
@@ -38,6 +39,9 @@ def main(argv=sys.argv[1:]):
 
 	delimiter=delims[Path(args.extras).suffix]
 
+	if args.progress_bar:
+		from makemkv import ProgressParser
+
 	if args.output:
 		outDir=args.output
 	else:
@@ -58,56 +62,60 @@ def main(argv=sys.argv[1:]):
 	extras_base = os.path.basename(os.path.splitext(args.extras)[0])
 	makemkvlog = extras_base + ".log"
 	makemkvjsn = extras_base + ".json"
-	with ProgressParser() as progress:
-		makemkv = MakeMKV(args.disc, progress_handler=progress.parse_progress)
 
-		if os.path.isfile(makemkvlog) and not args.scan:
-			print(f"{makemkvlog} already exits")
-			disc_info=parse_makemkv(makemkvlog,args.disc)
-			with open(makemkvjsn,'w') as f:
-				json.dump(disc_info, f, indent=2, sort_keys=True)
-		elif os.path.isfile(makemkvjsn):
-			with open(makemkvjsn) as f:
-				disc_info=json.load(f)
-		else:
-			disc_info = makemkv.info(minlength=args.minlength)
-			with open(makemkvjsn,'w') as f:
-				json.dump(disc_info, f, indent=2, sort_keys=True)
-		print(disc_info["disc"]["name"])
-	
-		nosegmap=[]
-		for tinfo in tinfos:
-			ttitle, tlength=tinfo
-			if ttitle == "title":
-				continue
-			title=ttitle.replace(":", "").replace('"', "")
-			segmap=""
-			for i,d in enumerate(disc_info['titles']):
-				dtrack=i
-				dlength = d["length"]
-				dsegmap = d["source_filename"]
-				doutputfile = d["file_output"]
-				ds=convert_sec(dlength)
-				ts=tlength
-				if (ds and (ds == ts)):
-					segmap=dsegmap
-					track=dtrack
-					outputfile=doutputfile
-			if not os.path.exists(os.path.join(outDir,title+".mkv")):
-				if not segmap:
-					print("{} no segmap".format(title))
-					nosegmap.append(f" - {title},{tlength}")
-				else:
-					print(f"{title} {segmap}")
-					makemkv.mkv(title=track, output_dir=".", minlength=args.minlength)
-					os.rename(os.path.join(outDir,outputfile), os.path.join(outDir,title+".mkv"))
+	kwargs = {}
+	if args.progress_bar:
+		progress = ProgressParser()
+		kwargs["progress_handler"] = progress.parse_progress
+	makemkv = MakeMKV(args.disc, **kwargs)
+
+	if os.path.isfile(makemkvlog) and not args.scan:
+		print(f"{makemkvlog} already exits")
+		disc_info=parse_makemkv(makemkvlog,args.disc)
+		with open(makemkvjsn,'w') as f:
+			json.dump(disc_info, f, indent=2, sort_keys=True)
+	elif os.path.isfile(makemkvjsn):
+		with open(makemkvjsn) as f:
+			disc_info=json.load(f)
+	else:
+		disc_info = makemkv.info(minlength=args.minlength)
+		with open(makemkvjsn,'w') as f:
+			json.dump(disc_info, f, indent=2, sort_keys=True)
+	print(disc_info["disc"]["name"])
+
+	nosegmap=[]
+	for tinfo in tinfos:
+		ttitle, tlength=tinfo
+		if ttitle == "title":
+			continue
+		title=ttitle.replace(":", "").replace('"', "")
+		segmap=""
+		for i,d in enumerate(disc_info['titles']):
+			dtrack=i
+			dlength = d["length"]
+			dsegmap = d["source_filename"]
+			doutputfile = d["file_output"]
+			ds=convert_sec(dlength)
+			ts=tlength
+			if (ds and (ds == ts)):
+				segmap=dsegmap
+				track=dtrack
+				outputfile=doutputfile
+		if not os.path.exists(os.path.join(outDir,title+".mkv")):
+			if not segmap:
+				print("{} no segmap".format(title))
+				nosegmap.append(f" - {title},{tlength}")
 			else:
-				print("skipping {}, already exists".format(os.path.join(outDir,title+".mkv")))
+				print(f"{title} {segmap}")
+				makemkv.mkv(title=track, output_dir=".", minlength=args.minlength)
+				os.rename(os.path.join(outDir,outputfile), os.path.join(outDir,title+".mkv"))
+		else:
+			print("skipping {}, already exists".format(os.path.join(outDir,title+".mkv")))
 
-		if nosegmap:
-			print("the following tracks were not matched, check the length:")
-			print("\n".join(nosegmap))
-			print()
+	if nosegmap:
+		print("the following tracks were not matched, check the length:")
+		print("\n".join(nosegmap))
+		print()
 
 if __name__ == "__main__":
 	main()
