@@ -11,6 +11,17 @@ delims = {
 	".csv": ",",
 }
 
+extra_end = [
+	"-behindthescenes", 
+	"-deleted",
+	"-featurette",
+	"-interview",
+	"-scene",
+	"-short",
+	"-trailer",
+	"-other",
+]
+
 parser = ArgumentParser()
 parser.add_argument("-e", "--extras", help="file path to extras csv or tsv")
 parser.add_argument("-l", "--minlength", help="min length of video in sec", default=40)
@@ -52,13 +63,21 @@ def main(argv=sys.argv[1:]):
 	os.chdir(outDir)
 
 	tinfos=[]
+	extra_warn = []
 	with open(args.extras) as f:
 		cinfos=csv.reader(f,delimiter=delimiter)
 		for i in cinfos:
 			if len(i) !=2:
 				raise Exception(f"missing track info at:\n    {i}")
-			i[1]=convert_sec(i[1])
-			tinfos.append(i)
+			if not any(i[0].endswith(s) for s in extra_end):
+				extra_warn.append(i[0])
+			tmp=convert_sec(i[1])
+			tinfos.append([*i, tmp])
+
+	if extra_warn:
+		print("the following tracks were missing plex extra ending")
+		print("\n".join(extra_warn))
+		print()
 	extras_base = os.path.basename(os.path.splitext(args.extras)[0])
 	makemkvlog = extras_base + ".log"
 	makemkvjsn = extras_base + ".json"
@@ -85,7 +104,7 @@ def main(argv=sys.argv[1:]):
 
 	nosegmap=[]
 	for tinfo in tinfos:
-		ttitle, tlength=tinfo
+		ttitle, tlength, ts=tinfo
 		if ttitle == "title":
 			continue
 		title=ttitle.replace(":", "").replace('"', "")
@@ -96,7 +115,6 @@ def main(argv=sys.argv[1:]):
 			dsegmap = d["source_filename"]
 			doutputfile = d["file_output"]
 			ds=convert_sec(dlength)
-			ts=tlength
 			if (ds and (ds == ts)):
 				segmap=dsegmap
 				track=dtrack
