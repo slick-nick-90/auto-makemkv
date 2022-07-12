@@ -83,10 +83,13 @@ def main(argv=sys.argv[1:]):
 	makemkvjsn = extras_base + ".json"
 
 	kwargs = {}
+	kwargs["input"] = args.disc
+	kwargs["minlength"] = args.minlength
+
 	if args.progress_bar:
 		progress = ProgressParser()
 		kwargs["progress_handler"] = progress.parse_progress
-	makemkv = MakeMKV(args.disc, **kwargs)
+	makemkv = MakeMKV(**kwargs)
 
 	if os.path.isfile(makemkvlog) and not args.scan:
 		print(f"{makemkvlog} already exits")
