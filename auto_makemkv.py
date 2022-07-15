@@ -45,6 +45,27 @@ def parse_makemkv(inputfile,disc):
 	disc_info = makemkv._parse_makemkv_log(content.split("\n"))
 	return disc_info
 
+def info(progress_bar, ProgressParser, disc, opts):
+	if progress_bar:
+		with ProgressParser() as progress:
+			makemkv = MakeMKV(disc, progress_handler=progress.parse_progress)
+			disc_info = makemkv.info(**opts)
+	else:
+		makemkv = MakeMKV(disc)
+		disc_info = makemkv.info(**opts)
+	return disc_info
+
+
+def mkv(progress_bar, ProgressParser, disc, opts):
+	if progress_bar:
+		with ProgressParser() as progress:
+			makemkv = MakeMKV(disc, progress_handler=progress.parse_progress)
+			makemkv.mkv(**opts)
+	else:
+		makemkv = MakeMKV(disc)
+		makemkv.mkv(**opts)
+
+
 def main(argv=sys.argv[1:]):
 	args = parser.parse_args(argv)
 
@@ -52,6 +73,8 @@ def main(argv=sys.argv[1:]):
 
 	if args.progress_bar:
 		from makemkv import ProgressParser
+	else:
+		ProgressParser = None
 
 	if args.output:
 		outDir=args.output
@@ -82,15 +105,6 @@ def main(argv=sys.argv[1:]):
 	makemkvlog = extras_base + ".log"
 	makemkvjsn = extras_base + ".json"
 
-	kwargs = {}
-	kwargs["input"] = args.disc
-	kwargs["minlength"] = args.minlength
-
-	if args.progress_bar:
-		progress = ProgressParser()
-		kwargs["progress_handler"] = progress.parse_progress
-	makemkv = MakeMKV(**kwargs)
-
 	if os.path.isfile(makemkvlog) and not args.scan:
 		print(f"{makemkvlog} already exits")
 		disc_info=parse_makemkv(makemkvlog,args.disc)
@@ -100,7 +114,10 @@ def main(argv=sys.argv[1:]):
 		with open(makemkvjsn) as f:
 			disc_info=json.load(f)
 	else:
-		disc_info = makemkv.info(minlength=args.minlength)
+		opts = {
+			"minlength":args.minlength
+		}
+		disc_info = info(args.progress_bar, ProgressParser ,args.disc, opts)
 		with open(makemkvjsn,'w') as f:
 			json.dump(disc_info, f, indent=2, sort_keys=True)
 	print(disc_info["disc"]["name"])
@@ -128,7 +145,12 @@ def main(argv=sys.argv[1:]):
 				nosegmap.append(f" - {title},{tlength}")
 			else:
 				print(f"{title} {segmap}")
-				makemkv.mkv(title=track, output_dir=".", minlength=args.minlength)
+				opts = {
+					"title": track, 
+					"output_dir": ".",
+					"minlength": args.minlength,
+				}
+				mkv(args.progress_bar,ProgressParser ,args.disc,opts)
 				os.rename(os.path.join(outDir,outputfile), os.path.join(outDir,title+".mkv"))
 		else:
 			print("skipping {}, already exists".format(os.path.join(outDir,title+".mkv")))
