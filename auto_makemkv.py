@@ -5,6 +5,7 @@ import sys
 from argparse import ArgumentParser, BooleanOptionalAction
 from makemkv import MakeMKV
 from pathlib import Path
+from time import sleep
 
 delims = {
 	".tsv": "\t",
@@ -101,6 +102,7 @@ def main(argv=sys.argv[1:]):
 		print("the following tracks were missing plex extra ending")
 		print("\n".join(extra_warn))
 		print()
+		sleep(5)
 	extras_base = os.path.basename(os.path.splitext(args.extras)[0])
 	makemkvlog = extras_base + ".log"
 	makemkvjsn = extras_base + ".json"
@@ -127,7 +129,7 @@ def main(argv=sys.argv[1:]):
 		ttitle, tlength, ts=tinfo
 		if ttitle == "title":
 			continue
-		title=ttitle.replace(":", "").replace('"', "")
+		title=ttitle.replace(":", "").replace('"', "").replace('?', "")
 		segmap=""
 		for i,d in enumerate(disc_info['titles']):
 			dtrack=i
