@@ -23,6 +23,11 @@ extra_end = [
 	"-other",
 ]
 
+disc_types = {
+	"DVD": 0,
+	"BD": 1,
+}
+
 parser = ArgumentParser()
 parser.add_argument("-e", "--extras", help="file path to extras csv or tsv")
 parser.add_argument("-l", "--minlength", help="min length of video in sec", default=40)
@@ -123,6 +128,7 @@ def main(argv=sys.argv[1:]):
 		with open(makemkvjsn,'w') as f:
 			json.dump(disc_info, f, indent=2, sort_keys=True)
 	print(disc_info["disc"]["name"])
+	disc_type = disc_types[disc_info["disc"]["type"]]
 
 	nosegmap=[]
 	for tinfo in tinfos:
@@ -134,11 +140,15 @@ def main(argv=sys.argv[1:]):
 		for i,d in enumerate(disc_info['titles']):
 			dtrack=i
 			dlength = d["length"]
-			dsegmap = d["source_filename"]
+			if disc_type == disc_types["BD"]:
+				dsegmap = d["source_filename"]
 			doutputfile = d["file_output"]
 			ds=convert_sec(dlength)
 			if (ds and (ds == ts)):
-				segmap=dsegmap
+				if disc_type == disc_types["BD"]:
+					segmap=dsegmap
+				else:
+					segmap = "found"
 				track=dtrack
 				outputfile=doutputfile
 		if not os.path.exists(os.path.join(outDir,title+".mkv")):
