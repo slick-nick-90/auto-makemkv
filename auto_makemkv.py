@@ -35,6 +35,7 @@ parser.add_argument("-d", "--disc", help="disc number", default=0)
 parser.add_argument("-o", "--output", help="output directory, defaults to extras directory", default="")
 parser.add_argument("-s", "--scan", action="store_true", help="force rescan of disc", default=False)
 parser.add_argument('--progress_bar', action=BooleanOptionalAction, help="show progress bar", default=True)
+parser.add_argument('--extra_warn', action=BooleanOptionalAction, help="show extra warning", default=True)
 
 def convert_sec(duration):
 	# https://stackoverflow.com/questions/6402812/how-to-convert-an-hmmss-time-string-to-seconds-in-python
@@ -72,43 +73,7 @@ def mkv(progress_bar, ProgressParser, disc, opts):
 		makemkv.mkv(**opts)
 
 
-def main(argv=sys.argv[1:]):
-	args = parser.parse_args(argv)
-
-	delimiter=delims[Path(args.extras).suffix]
-
-	if args.progress_bar:
-		from makemkv import ProgressParser
-	else:
-		ProgressParser = None
-
-	if args.output:
-		outDir=args.output
-	else:
-		outDir=os.path.dirname(os.path.abspath(args.extras))
-
-	if not os.path.exists(outDir):
-		os.makedirs(outDir)
-	os.chdir(outDir)
-
-	tinfos=[]
-	extra_warn = []
-	with open(args.extras) as f:
-		cinfos=csv.reader(f,delimiter=delimiter)
-		for i in cinfos:
-			if len(i) !=2:
-				raise Exception(f"missing track info at:\n    {i}")
-			if not any(i[0].endswith(s) for s in extra_end):
-				extra_warn.append(i[0])
-			tmp=convert_sec(i[1])
-			tinfos.append([*i, tmp])
-
-	if extra_warn:
-		print("the following tracks were missing plex extra ending")
-		print("\n".join(extra_warn))
-		print()
-		sleep(5)
-	extras_base = os.path.basename(os.path.splitext(args.extras)[0])
+def get_disc_info(extras_base, ProgressParser, args):
 	makemkvlog = extras_base + ".log"
 	makemkvjsn = extras_base + ".json"
 
@@ -127,6 +92,52 @@ def main(argv=sys.argv[1:]):
 		disc_info = info(args.progress_bar, ProgressParser ,args.disc, opts)
 		with open(makemkvjsn,'w') as f:
 			json.dump(disc_info, f, indent=2, sort_keys=True)
+	
+	return disc_info
+
+
+def main(argv=sys.argv[1:]):
+	args = parser.parse_args(argv)
+
+	delimiter=delims[Path(args.extras).suffix]
+
+	if args.progress_bar:
+		from makemkv import ProgressParser
+	else:
+		ProgressParser = None
+
+	if args.output:
+		outDir=args.output
+	else:
+		outDir=os.path.dirname(os.path.abspath(args.extras))
+
+	if not os.path.exists(outDir):
+		os.makedirs(outDir)
+
+	tinfos=[]
+	extra_warn = []
+	with open(args.extras) as f:
+		cinfos=csv.reader(f,delimiter=delimiter)
+		for i in cinfos:
+			if len(i) !=2:
+				raise Exception(f"missing track info at:\n    {i}")
+			if args.extra_warn and not any(i[0].endswith(s) for s in extra_end):
+				extra_warn.append(i[0])
+			tmp=convert_sec(i[1])
+			tinfos.append([*i, tmp])
+
+	if extra_warn:
+		print("the following tracks were missing plex extra ending")
+		print("\n".join(extra_warn))
+		print()
+		sleep(5)
+
+	os.chdir(outDir)
+
+	extras_base = os.path.basename(os.path.splitext(args.extras)[0])
+
+	disc_info = get_disc_info(extras_base, ProgressParser, args)
+
 	print(disc_info["disc"]["name"])
 	disc_type = disc_types[disc_info["disc"]["type"]]
 
@@ -151,7 +162,8 @@ def main(argv=sys.argv[1:]):
 					segmap = "found"
 				track=dtrack
 				outputfile=doutputfile
-		if not os.path.exists(os.path.join(outDir,title+".mkv")):
+		titlePlusExt = title + ".mkv"
+		if not os.path.exists(titlePlusExt):
 			if not segmap:
 				print("{} no segmap".format(title))
 				nosegmap.append(f" - {title},{tlength}")
@@ -162,10 +174,10 @@ def main(argv=sys.argv[1:]):
 					"output_dir": ".",
 					"minlength": args.minlength,
 				}
-				mkv(args.progress_bar,ProgressParser ,args.disc,opts)
-				os.rename(os.path.join(outDir,outputfile), os.path.join(outDir,title+".mkv"))
+				mkv(args.progress_bar,ProgressParser ,args.disc, opts)
+				os.rename(outputfile, titlePlusExt)
 		else:
-			print("skipping {}, already exists".format(os.path.join(outDir,title+".mkv")))
+			print(f"skipping {titlePlusExt}, already exists")
 
 	if nosegmap:
 		print("the following tracks were not matched, check the length:")
