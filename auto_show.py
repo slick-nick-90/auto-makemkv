@@ -2,10 +2,11 @@ from auto_makemkv import get_disc_info
 from auto_makemkv import parser as auto_makemkv_parser
 from auto_makemkv import mkv
 from auto_makemkv import main as auto_makemkv
+from copy import deepcopy
 from makemkv import ProgressParser
 import csv
 import sys
-parser = auto_makemkv_parser
+parser = deepcopy(auto_makemkv_parser)
 parser.add_argument("--show_name", type=str, help="name of show", required=True)
 parser.add_argument("--show_season", type=int, help="show disc season", required=True)
 parser.add_argument("--show_disc", type=int, help="show disc number", required=True)
@@ -13,7 +14,7 @@ parser.add_argument("--show_chapter_count", type=int, help="specify chapter coun
 parser.add_argument("--show_comment_start", type=str, help="specify start of comment", default="C")
 
 def main(argv=sys.argv[1:]):
-    args = parser.parse_args(argv)
+    args = parser.parse_args(["-e", "tmp", *argv])
 
     show_name = args.show_name
     s = args.show_season
