@@ -29,13 +29,13 @@ disc_types = {
 }
 
 parser = ArgumentParser()
-parser.add_argument("-e", "--extras", help="file path to extras csv or tsv")
-parser.add_argument("-l", "--minlength", help="min length of video in sec", default=40)
-parser.add_argument("-d", "--disc", help="disc number", default=0)
-parser.add_argument("-o", "--output", help="output directory, defaults to extras directory", default="")
-parser.add_argument("-s", "--scan", action="store_true", help="force rescan of disc", default=False)
-parser.add_argument('--progress_bar', action=BooleanOptionalAction, help="show progress bar", default=True)
-parser.add_argument('--extra_warn', action=BooleanOptionalAction, help="show extra warning", default=True)
+parser.add_argument("-e", "--extras", help="file path to extras csv or tsv",type=str, required=True)
+parser.add_argument("-l", "--minlength", help="min length of video in sec", type=int, default=40)
+parser.add_argument("-d", "--disc", help="disc number", type=int, default=0)
+parser.add_argument("-o", "--output", help="output directory, defaults to extras directory",type=str, default="")
+parser.add_argument("-s", "--scan", action=BooleanOptionalAction, help="force rescan of disc", type=bool, default=False)
+parser.add_argument('--progress_bar', action=BooleanOptionalAction, help="show progress bar", type=bool, default=True)
+parser.add_argument('--extra_warn', action=BooleanOptionalAction, help="show extra warning", type=bool, default=True)
 
 def convert_sec(duration):
 	# https://stackoverflow.com/questions/6402812/how-to-convert-an-hmmss-time-string-to-seconds-in-python
