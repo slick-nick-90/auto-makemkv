@@ -1,11 +1,11 @@
 from auto_makemkv import get_disc_info
-from auto_makemkv import parser
+from auto_makemkv import parser as auto_makemkv_parser
 from auto_makemkv import mkv
 from auto_makemkv import main as auto_makemkv
 from makemkv import ProgressParser
 import csv
 import sys
-
+parser = auto_makemkv_parser
 parser.add_argument("--show_name", type=str, help="name of show", required=True)
 parser.add_argument("--show_season", type=int, help="show disc season", required=True)
 parser.add_argument("--show_disc", type=int, help="show disc number", required=True)
@@ -50,9 +50,6 @@ def main(argv=sys.argv[1:]):
         "-e", extra,
         "-o", show_name,
         "--no-extra_warn",
-        "--show_name", "tmp",
-        "--show_season", str(9999),
-        "--show_disc", str(9999),
     ])
 
 
