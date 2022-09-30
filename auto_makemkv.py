@@ -1,20 +1,41 @@
-from pathlib import Path
 import csv
-import re
+import json
 import os
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, BooleanOptionalAction
+from makemkv import MakeMKV
+from pathlib import Path
+from time import sleep
 
 delims = {
 	".tsv": "\t",
 	".csv": ",",
 }
 
+extra_end = [
+	"-behindthescenes", 
+	"-deleted",
+	"-featurette",
+	"-interview",
+	"-scene",
+	"-short",
+	"-trailer",
+	"-other",
+]
+
+disc_types = {
+	"DVD": 0,
+	"BD": 1,
+}
+
 parser = ArgumentParser()
-parser.add_argument("-e", "--extras", help="file path to extras csv or tsv")
-parser.add_argument("-l", "--minlength", help="min length of video in sec",default=40)
-parser.add_argument("-o", "--output", help="output directory, defaults to extras directory",default="")
-parser.add_argument("-s", "--scan", action="store_true", help="force rescan of disc",default=False, )
+parser.add_argument("-e", "--extras", help="file path to extras csv or tsv",type=str, required=True)
+parser.add_argument("-l", "--minlength", help="min length of video in sec", type=int, default=40)
+parser.add_argument("-d", "--disc", help="disc number", type=int, default=0)
+parser.add_argument("-o", "--output", help="output directory, defaults to extras directory",type=str, default="")
+parser.add_argument("-s", "--scan", action=BooleanOptionalAction, help="force rescan of disc", type=bool, default=False)
+parser.add_argument('--progress_bar', action=BooleanOptionalAction, help="show progress bar", type=bool, default=True)
+parser.add_argument('--extra_warn', action=BooleanOptionalAction, help="show extra warning", type=bool, default=True)
 
 def convert_sec(duration):
 	# https://stackoverflow.com/questions/6402812/how-to-convert-an-hmmss-time-string-to-seconds-in-python
@@ -24,34 +45,66 @@ def convert_sec(duration):
 		raise Exception(f"cannot convert '{duration}' to sec")
 	return secs
 
-def parse_makemkv(inputfile):
-	"""	# from https://www.makemkv.com/forum2/viewtopic.php?f=1&t=7680#p42661
-		ap_iaChapterCount=8,
-		ap_iaDuration=9,
-		ap_iaPlaylist=16,
-		ap_iaSegmentsMap=26,
-		ap_iaOutputFileName=27,
-	"""
-
-	fullmatch = re.compile(
-		r'TINFO:(?P<title>\d+),9,0,"(?P<duration>[\d:]+)".+?'
-		r'TINFO:(?P=title),16,0,"(?P<playlist>\d+?.m..s)".+?'
-		r'TINFO:(?P=title),27,0,"(?P<outputfile>.+?mkv)"'
-	, re.DOTALL)
-
+def parse_makemkv(inputfile,disc):
 	with open(inputfile) as f:
 		content = f.read().replace("\n\r", "\n")
-	disc_info=fullmatch.findall(content)
-	movie=re.search("CINFO:2,0,\"(.*)\"\n",content).group(1)
-	if not movie:
-		print("error cannot find name of disc")
+	makemkv = MakeMKV(disc)
+	disc_info = makemkv._parse_makemkv_log(content.split("\n"))
+	return disc_info
 
-	return movie,disc_info
+def info(progress_bar, ProgressParser, disc, opts):
+	if progress_bar:
+		with ProgressParser() as progress:
+			makemkv = MakeMKV(disc, progress_handler=progress.parse_progress)
+			disc_info = makemkv.info(**opts)
+	else:
+		makemkv = MakeMKV(disc)
+		disc_info = makemkv.info(**opts)
+	return disc_info
+
+
+def mkv(progress_bar, ProgressParser, disc, opts):
+	if progress_bar:
+		with ProgressParser() as progress:
+			makemkv = MakeMKV(disc, progress_handler=progress.parse_progress)
+			makemkv.mkv(**opts)
+	else:
+		makemkv = MakeMKV(disc)
+		makemkv.mkv(**opts)
+
+
+def get_disc_info(extras_base, ProgressParser, args):
+	makemkvlog = extras_base + ".log"
+	makemkvjsn = extras_base + ".json"
+
+	if os.path.isfile(makemkvlog) and not args.scan:
+		print(f"{makemkvlog} already exits")
+		disc_info=parse_makemkv(makemkvlog,args.disc)
+		with open(makemkvjsn,'w') as f:
+			json.dump(disc_info, f, indent=2, sort_keys=True)
+	elif os.path.isfile(makemkvjsn):
+		with open(makemkvjsn) as f:
+			disc_info=json.load(f)
+	else:
+		opts = {
+			"minlength":args.minlength
+		}
+		disc_info = info(args.progress_bar, ProgressParser ,args.disc, opts)
+		with open(makemkvjsn,'w') as f:
+			json.dump(disc_info, f, indent=2, sort_keys=True)
+	
+	return disc_info
+
 
 def main(argv=sys.argv[1:]):
 	args = parser.parse_args(argv)
 
 	delimiter=delims[Path(args.extras).suffix]
+
+	if args.progress_bar:
+		from makemkv import ProgressParser
+	else:
+		ProgressParser = None
 
 	if args.output:
 		outDir=args.output
@@ -60,54 +113,71 @@ def main(argv=sys.argv[1:]):
 
 	if not os.path.exists(outDir):
 		os.makedirs(outDir)
-	os.chdir(outDir)
 
 	tinfos=[]
+	extra_warn = []
 	with open(args.extras) as f:
 		cinfos=csv.reader(f,delimiter=delimiter)
 		for i in cinfos:
 			if len(i) !=2:
 				raise Exception(f"missing track info at:\n    {i}")
-			i[1]=convert_sec(i[1])
-			tinfos.append(i)
+			if args.extra_warn and not any(i[0].endswith(s) for s in extra_end):
+				extra_warn.append(i[0])
+			tmp=convert_sec(i[1])
+			tinfos.append([*i, tmp])
 
-	makemkvlog="_MakeMKVOutput.log"
-	if os.path.isfile(makemkvlog) and not args.scan:
-		print(f"{makemkvlog} already exits")
-	else:
-		cmd=f"makemkvcon --robot --minlength={args.minlength} --messages={makemkvlog} info disc:0"
-		print(cmd)
-		os.system(cmd)
-	movie, disc_info=parse_makemkv(makemkvlog)
-	print(movie)
-	
+	if extra_warn:
+		print("the following tracks were missing plex extra ending")
+		print("\n".join(extra_warn))
+		print()
+		sleep(5)
+
+	os.chdir(outDir)
+
+	extras_base = os.path.basename(os.path.splitext(args.extras)[0])
+
+	disc_info = get_disc_info(extras_base, ProgressParser, args)
+
+	print(disc_info["disc"]["name"])
+	disc_type = disc_types[disc_info["disc"]["type"]]
+
 	nosegmap=[]
 	for tinfo in tinfos:
-		ttitle, tlength=tinfo
+		ttitle, tlength, ts=tinfo
 		if ttitle == "title":
 			continue
-		title=ttitle.replace(":", "").replace('"', "")
+		title=ttitle.replace(":", "").replace('"', "").replace('?', "")
 		segmap=""
-		for d in disc_info:
-			dtrack,dlength,dsegmap,doutputfile = d
+		for i,d in enumerate(disc_info['titles']):
+			dtrack=i
+			dlength = d["length"]
+			if disc_type == disc_types["BD"]:
+				dsegmap = d["source_filename"]
+			doutputfile = d["file_output"]
 			ds=convert_sec(dlength)
-			ts=tlength
 			if (ds and (ds == ts)):
-				segmap=dsegmap
+				if disc_type == disc_types["BD"]:
+					segmap=dsegmap
+				else:
+					segmap = "found"
 				track=dtrack
 				outputfile=doutputfile
-		if not os.path.exists(os.path.join(outDir,title+".mkv")):
+		titlePlusExt = title + ".mkv"
+		if not os.path.exists(titlePlusExt):
 			if not segmap:
 				print("{} no segmap".format(title))
 				nosegmap.append(f" - {title},{tlength}")
 			else:
 				print(f"{title} {segmap}")
-				cmd=f"makemkvcon --robot --noscan --minlength={args.minlength} mkv disc:0 {track} ."
-				print(cmd)
-				os.system(cmd)
-				os.rename(os.path.join(outDir,outputfile), os.path.join(outDir,title+".mkv"))
+				opts = {
+					"title": track, 
+					"output_dir": ".",
+					"minlength": args.minlength,
+				}
+				mkv(args.progress_bar,ProgressParser ,args.disc, opts)
+				os.rename(outputfile, titlePlusExt)
 		else:
-			print("skipping {}, already exists".format(os.path.join(outDir,title+".mkv")))
+			print(f"skipping {titlePlusExt}, already exists")
 
 	if nosegmap:
 		print("the following tracks were not matched, check the length:")
