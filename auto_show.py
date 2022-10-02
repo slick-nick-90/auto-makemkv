@@ -6,6 +6,7 @@ from copy import deepcopy
 from makemkv import ProgressParser
 import csv
 import sys
+import os
 parser = deepcopy(auto_makemkv_parser)
 parser.add_argument("--show_name", type=str, help="name of show", required=True)
 parser.add_argument("--show_season", type=int, help="show disc season", required=True)
@@ -24,6 +25,7 @@ def main(argv=sys.argv[1:]):
 
 	if not d>1:
 		ep = 1
+		os.makedirs(f"{show_name}/s{s:02d}",exist_ok=True)
 	else:
 		with open(f"{show_name}/s{s:02d}_d{d-1:02d}.tsv",'r') as f:
 			tsv_file = csv.reader(f, delimiter="\t")
