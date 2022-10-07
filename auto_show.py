@@ -36,17 +36,28 @@ def main(argv=sys.argv[1:]):
 	disc_info = get_disc_info(extras_base=extras_base,ProgressParser=ProgressParser,args=args)
 	tracks = []
 	lengths = []
+	eps = []
 	for i, title in enumerate(disc_info["titles"]):
 		title
 		if title["chapter_count"] == args.show_chapter_count and title["comment"].startswith(args.show_comment_start): #todo: move to arguments options
 			tracks.append(i)
 			lengths.append(title["length"])
+			eps.append(ep)
+			ep += 1
+		if title["chapter_count"] in [7,8,9] and title["comment"].startswith(args.show_comment_start): #todo: move to arguments options
+			tracks.append(i)
+			lengths.append(title["length"])
+			eps.append([ep,ep+1])
+			ep += 2
 
-	eps = range(ep,ep+len(tracks))
 	extra = f"{extras_base}.tsv"
 	with open(extra,"w") as f:
 		for i, track in enumerate(tracks):
-			f.write(f"s{s:02d}/e{eps[i]:02d}\t{lengths[i]}\n")
+			if type(eps[i]) == int:
+				ep_name = f"e{eps[i]:02d}"
+			elif len(eps[i]) == 2:
+				ep_name = f"e{eps[i][0]:02d}-{eps[i][1]:02d}"
+			f.write(f"s{s:02d}/{ep_name}\t{lengths[i]}\n")
 
 	auto_makemkv([
 		"-e", extra,
