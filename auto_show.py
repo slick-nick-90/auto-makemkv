@@ -50,6 +50,9 @@ def main(argv=sys.argv[1:]):
 			eps.append([ep,ep+1])
 			ep += 2
 
+	if len(lengths) != len(set(lengths)):
+		print("warning: some of the episodes have the same length!")
+
 	extra = f"{extras_base}.tsv"
 	with open(extra,"w") as f:
 		for i, track in enumerate(tracks):
