@@ -119,18 +119,21 @@ def main(argv=sys.argv[1:]):
 	with open(args.extras) as f:
 		cinfos=csv.reader(f,delimiter=delimiter)
 		for i in cinfos:
-			if len(i) !=2:
+			if not len(i) in [2, 3]:
 				raise Exception(f"missing track info at:\n    {i}")
+			tidx = 0
+			if len(i) == 3:
+				tidx = int(i[2])-1
 			if args.extra_warn and not any(i[0].endswith(s) for s in extra_end):
 				extra_warn.append(i[0])
 			tmp=convert_sec(i[1])
-			tinfos.append([*i, tmp])
+			tinfos.append([i[0], i[1], tmp, tidx])
 
 	if extra_warn:
 		print("the following tracks were missing plex extra ending")
 		print("\n".join(extra_warn))
 		print()
-		sleep(5)
+		sleep(10)
 
 	os.chdir(outDir)
 
@@ -143,11 +146,12 @@ def main(argv=sys.argv[1:]):
 
 	nosegmap=[]
 	for tinfo in tinfos:
-		ttitle, tlength, ts=tinfo
+		ttitle, tlength, ts, tidx=tinfo
 		if ttitle == "title":
 			continue
 		title=ttitle.replace(":", "").replace('"', "").replace('?', "")
 		segmap=""
+		count = 0
 		for i,d in enumerate(disc_info['titles']):
 			dtrack=i
 			dlength = d["length"]
@@ -156,12 +160,14 @@ def main(argv=sys.argv[1:]):
 			doutputfile = d["file_output"]
 			ds=convert_sec(dlength)
 			if (ds and (ds == ts)):
-				if disc_type == disc_types["BD"]:
-					segmap=dsegmap
-				else:
-					segmap = "found"
-				track=dtrack
-				outputfile=doutputfile
+				if count == tidx:
+					if disc_type == disc_types["BD"]:
+						segmap=dsegmap
+					else:
+						segmap = "found"
+					track=dtrack
+					outputfile=doutputfile
+				count += 1
 		titlePlusExt = title + ".mkv"
 		if not os.path.exists(titlePlusExt):
 			if not segmap:
