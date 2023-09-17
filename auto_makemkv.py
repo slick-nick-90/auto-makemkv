@@ -2,6 +2,7 @@ import csv
 import json
 import os
 import sys
+from configparser import ConfigParser
 from argparse import ArgumentParser, BooleanOptionalAction
 from makemkv import MakeMKV
 from pathlib import Path
@@ -76,6 +77,7 @@ def mkv(progress_bar, ProgressParser, disc, opts):
 def get_disc_info(extras_base, ProgressParser, args):
 	makemkvlog = extras_base + ".log"
 	makemkvjsn = extras_base + ".json"
+	makemkvini = extras_base + ".ini"
 
 	if os.path.isfile(makemkvlog) and not args.scan:
 		print(f"{makemkvlog} already exits")
@@ -85,6 +87,12 @@ def get_disc_info(extras_base, ProgressParser, args):
 	elif os.path.isfile(makemkvjsn):
 		with open(makemkvjsn) as f:
 			disc_info=json.load(f)
+		if os.path.exists(makemkvini):
+			config = ConfigParser()
+			config.read(makemkvini)
+			args.minlength = int(config["MAKEMKV"]["minlength"])
+			print(f"overriding parmam to  using {makemkvini}")
+			print(f"    minlength = {args.minlength}")
 	else:
 		opts = {
 			"minlength":args.minlength
@@ -92,6 +100,12 @@ def get_disc_info(extras_base, ProgressParser, args):
 		disc_info = info(args.progress_bar, ProgressParser ,args.disc, opts)
 		with open(makemkvjsn,'w') as f:
 			json.dump(disc_info, f, indent=2, sort_keys=True)
+		if args.minlength != 40:
+			config = ConfigParser()
+			config.add_section("MAKEMKV")
+			config.set("MAKEMKV", "minlength", str(args.minlength))
+			with open(makemkvini, 'w') as f:
+				config.write(f)
 	
 	return disc_info
 
