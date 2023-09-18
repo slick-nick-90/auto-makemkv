@@ -4,6 +4,8 @@ from auto_makemkv import mkv
 from auto_makemkv import main as auto_makemkv
 from copy import deepcopy
 from makemkv import ProgressParser
+from ast import literal_eval
+
 import csv
 import sys
 import os
@@ -11,7 +13,8 @@ parser = deepcopy(auto_makemkv_parser)
 parser.add_argument("--show_name", type=str, help="name of show", required=True)
 parser.add_argument("--show_season", type=int, help="show disc season", required=True)
 parser.add_argument("--show_disc", type=int, help="show disc number", required=True)
-parser.add_argument("--show_chapter_count", type=int, help="specify chapter count", default=5)
+parser.add_argument("--show_1ep_chapter_count", type=str, help="specify chapter count for single episodes tracks", default="[5,6]")
+parser.add_argument("--show_2ep_chapter_count", type=str, help="specify chapter count for multi-episode tracks", default="[7,8,9]")
 parser.add_argument("--show_comment_start", type=str, help="specify start of comment", default="C")
 
 def main(argv=sys.argv[1:]):
@@ -39,12 +42,12 @@ def main(argv=sys.argv[1:]):
 	eps = []
 	for i, title in enumerate(disc_info["titles"]):
 		title
-		if title["chapter_count"] == args.show_chapter_count and title["comment"].startswith(args.show_comment_start): #todo: move to arguments options
+		if title["chapter_count"] in literal_eval(args.show_1ep_chapter_count) and title["comment"].startswith(args.show_comment_start): #todo: move to arguments options
 			tracks.append(i)
 			lengths.append(title["length"])
 			eps.append(ep)
 			ep += 1
-		if title["chapter_count"] in [7,8,9] and title["comment"].startswith(args.show_comment_start): #todo: move to arguments options
+		if title["chapter_count"] in literal_eval(args.show_2ep_chapter_count) and title["comment"].startswith(args.show_comment_start): #todo: move to arguments options
 			tracks.append(i)
 			lengths.append(title["length"])
 			eps.append([ep,ep+1])
