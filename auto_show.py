@@ -2,15 +2,21 @@ from auto_makemkv import get_disc_info
 from auto_makemkv import parser as auto_makemkv_parser
 from auto_makemkv import mkv
 from auto_makemkv import main as auto_makemkv
-from copy import deepcopy
 from makemkv import ProgressParser
 from ast import literal_eval
+from argparse import ArgumentParser
 
 import csv
 import sys
 import os
+import __init__
 
-parser = deepcopy(auto_makemkv_parser)
+parser = ArgumentParser()
+for parser_arg in __init__.parser_args:
+    if parser_arg["args"][0] in ["--extras", "--extra_warn"]:
+        continue
+    parser.add_argument(*parser_arg["args"], **parser_arg["kwargs"])
+
 parser.add_argument("--show_name", type=str, help="name of show", required=True)
 parser.add_argument("--show_season", type=int, help="show disc season", required=True)
 parser.add_argument("--show_disc", type=int, help="show disc number", required=True)
@@ -18,13 +24,13 @@ parser.add_argument(
     "--show_1ep_chapter_count",
     type=str,
     help="specify chapter count for single episodes tracks",
-    default="[5,6]"
+    default="[5,6]",
 )
 parser.add_argument(
     "--show_2ep_chapter_count",
     type=str,
     help="specify chapter count for multi-episode tracks",
-    default="[7,8,9]"
+    default="[7,8,9]",
 )
 parser.add_argument(
     "--show_comment_start", type=str, help="specify start of comment", default="C"
@@ -32,7 +38,7 @@ parser.add_argument(
 
 
 def main(argv=sys.argv[1:]):
-    args = parser.parse_args(["-e", "tmp", *argv])
+    args = parser.parse_args(argv)
 
     show_name = args.show_name
     s = args.show_season

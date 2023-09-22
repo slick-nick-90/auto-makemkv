@@ -7,6 +7,7 @@ from argparse import ArgumentParser
 from makemkv import MakeMKV
 from pathlib import Path
 from time import sleep
+import __init__
 
 delims = {
     ".tsv": "\t",
@@ -30,42 +31,8 @@ disc_types = {
 }
 
 parser = ArgumentParser()
-parser.add_argument(
-    "-e", "--extras", help="file path to extras csv or tsv", type=str, required=True
-)
-parser.add_argument(
-    "-l", "--minlength", help="min length of video in sec", type=int, default=40
-)
-parser.add_argument("-d", "--disc", help="disc number", type=int, default=0)
-parser.add_argument(
-    "-o",
-    "--output",
-    help="output directory, defaults to extras directory",
-    type=str,
-    default="",
-)
-parser.add_argument(
-    "-s",
-    "--scan",
-    action=BooleanOptionalAction,
-    help="force rescan of disc",
-    type=bool,
-    default=False,
-)
-parser.add_argument(
-    "--progress_bar",
-    action=BooleanOptionalAction,
-    help="show progress bar",
-    type=bool,
-    default=True,
-)
-parser.add_argument(
-    "--extra_warn",
-    action=BooleanOptionalAction,
-    help="show extra warning",
-    type=bool,
-    default=True,
-)
+for parser_arg in __init__.parser_args:
+    parser.add_argument(*parser_arg["args"], **parser_arg["kwargs"])
 
 
 def convert_sec(duration):

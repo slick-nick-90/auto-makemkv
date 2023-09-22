@@ -2,19 +2,19 @@ from argparse import BooleanOptionalAction
 
 parser_args = [
     {
-        "args": {"--extras", "-e"},
+        "args": ["--extras", "-e"],
         "kwargs": {"help": "file path to extras tsv", "type": str, "required": True},
     },
     {
-        "args": {"--minlength", "-l"},
+        "args": ["--minlength", "-l"],
         "kwargs": {"help": "min length of video in sec", "type": int, "default": 40},
     },
     {
-        "args": {"--disc", "-d"},
+        "args": ["--disc", "-d"],
         "kwargs": {"help": "disc number", "type": int, "default": 0},
     },
     {
-        "args": {"--output", "-o"},
+        "args": ["--output", "-o"],
         "kwargs": {
             "help": "output directory, defaults to extras directory",
             "type": str,
@@ -22,7 +22,7 @@ parser_args = [
         },
     },
     {
-        "args": {"--scan", "-s"},
+        "args": ["--scan", "-s"],
         "kwargs": {
             "action": BooleanOptionalAction,
             "help": "force rescan of disc",
@@ -31,7 +31,7 @@ parser_args = [
         },
     },
     {
-        "args": {"--progress_bar"},
+        "args": ["--progress_bar"],
         "kwargs": {
             "action": BooleanOptionalAction,
             "help": "show progress bar",
@@ -40,7 +40,7 @@ parser_args = [
         },
     },
     {
-        "args": {"--extra_warn"},
+        "args": ["--extra_warn"],
         "kwargs": {
             "action": BooleanOptionalAction,
             "help": "show extra warning",
