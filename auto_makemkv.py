@@ -46,8 +46,8 @@ def convert_sec(duration):
     return secs
 
 
-def parse_makemkv(inputfile, disc):
-    with open(inputfile) as f:
+def parse_makemkv(input_file, disc):
+    with open(input_file) as f:
         content = f.read().replace("\n\r", "\n")
     makemkv = MakeMKV(disc)
     disc_info = makemkv._parse_makemkv_log(content.split("\n"))
@@ -92,7 +92,7 @@ def get_disc_info(extras_base, ProgressParser, args):
             config = ConfigParser()
             config.read(makemkvini)
             args.minlength = int(config["MAKEMKV"]["minlength"])
-            print(f"overriding parmam to  using {makemkvini}")
+            print(f"overriding param to  using {makemkvini}")
             print(f"    minlength = {args.minlength}")
     else:
         opts = {"minlength": args.minlength}
@@ -146,7 +146,9 @@ def main(argv=sys.argv[1:]):
         print("the following tracks were missing plex extra ending")
         print("\n".join(extra_warn))
         print()
-        sleep(10)
+        for i in range(10,0,-1):
+            print(f"continuing in {i} seconds")
+            sleep(1)
 
     os.chdir(outDir)
 
@@ -179,7 +181,7 @@ def main(argv=sys.argv[1:]):
                     else:
                         segmap = "found"
                     track = dtrack
-                    outputfile = doutputfile
+                    output_file = doutputfile
                 count += 1
         titlePlusExt = title + ".mkv"
         if not os.path.exists(titlePlusExt):
@@ -194,7 +196,7 @@ def main(argv=sys.argv[1:]):
                     "minlength": args.minlength,
                 }
                 mkv(args.progress_bar, ProgressParser, args.disc, opts)
-                os.rename(outputfile, titlePlusExt)
+                os.rename(output_file, titlePlusExt)
         else:
             print(f"skipping {titlePlusExt}, already exists")
 
