@@ -170,19 +170,15 @@ def main(argv=sys.argv[1:]):
         match_track = []
         match_output_file = []
         match_segmap = []
-        for dtrack, d in enumerate(disc_info["titles"]):
-            dlength = d["length"]
-            if disc_type == disc_types["BD"]:
-                dsegmap = d["source_filename"]
-            doutputfile = d["file_output"]
-            ds = convert_sec(dlength)
+        for d_track, d in enumerate(disc_info["titles"]):
+            ds = convert_sec(d["length"])
             if ds and (ds == ts):
                 if disc_type == disc_types["BD"]:
-                    match_segmap.append(dsegmap)
+                    match_segmap.append(d["source_filename"])
                 else:
                     match_segmap.append("found")
-                match_track.append(dtrack)
-                match_output_file.append(doutputfile)
+                match_track.append(d_track)
+                match_output_file.append(d["file_output"])
         if len(match_track) > 1:
             print(f"warning: more than one track has length of {tlength} found on disk")
         if not os.path.exists(titlePlusExt):
