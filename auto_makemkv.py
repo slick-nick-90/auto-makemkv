@@ -76,34 +76,34 @@ def mkv(progress_bar, ProgressParser, disc, opts):
 
 
 def get_disc_info(extras_base, ProgressParser, args):
-    makemkvlog = extras_base + ".log"
-    makemkvjsn = extras_base + ".json"
-    makemkvini = extras_base + ".ini"
+    makemkv_log = extras_base + ".log"
+    makemkv_jsn = extras_base + ".json"
+    makemkv_ini = extras_base + ".ini"
 
-    if os.path.isfile(makemkvlog) and not args.scan:
-        print(f"{makemkvlog} already exits")
-        disc_info = parse_makemkv(makemkvlog, args.disc)
-        with open(makemkvjsn, "w") as f:
+    if os.path.isfile(makemkv_log) and not args.scan:
+        print(f"{makemkv_log} already exits")
+        disc_info = parse_makemkv(makemkv_log, args.disc)
+        with open(makemkv_jsn, "w") as f:
             json.dump(disc_info, f, indent=2, sort_keys=True)
-    elif os.path.isfile(makemkvjsn):
-        with open(makemkvjsn) as f:
+    elif os.path.isfile(makemkv_jsn):
+        with open(makemkv_jsn) as f:
             disc_info = json.load(f)
-        if os.path.exists(makemkvini):
+        if os.path.exists(makemkv_ini):
             config = ConfigParser()
-            config.read(makemkvini)
+            config.read(makemkv_ini)
             args.minlength = int(config["MAKEMKV"]["minlength"])
-            print(f"overriding param to  using {makemkvini}")
+            print(f"overriding param to  using {makemkv_ini}")
             print(f"    minlength = {args.minlength}")
     else:
         opts = {"minlength": args.minlength}
         disc_info = info(args.progress_bar, ProgressParser, args.disc, opts)
-        with open(makemkvjsn, "w") as f:
+        with open(makemkv_jsn, "w") as f:
             json.dump(disc_info, f, indent=2, sort_keys=True)
         if args.minlength != 40:
             config = ConfigParser()
             config.add_section("MAKEMKV")
             config.set("MAKEMKV", "minlength", str(args.minlength))
-            with open(makemkvini, "w") as f:
+            with open(makemkv_ini, "w") as f:
                 config.write(f)
 
     return disc_info
