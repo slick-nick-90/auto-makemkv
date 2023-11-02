@@ -146,7 +146,7 @@ def main(argv=sys.argv[1:]):
         print("the following tracks were missing plex extra ending")
         print("\n".join(extra_warn))
         print()
-        for i in range(10,0,-1):
+        for i in range(10, 0, -1):
             print(f"continuing in {i} seconds")
             sleep(1)
 
@@ -165,30 +165,34 @@ def main(argv=sys.argv[1:]):
         if ttitle == "title":
             continue
         title = ttitle.replace(":", "").replace('"', "").replace("?", "")
+        titlePlusExt = title + ".mkv"
         segmap = ""
-        count = 0
-        for i, d in enumerate(disc_info["titles"]):
-            dtrack = i
+        match_track = []
+        match_output_file = []
+        match_segmap = []
+        for dtrack, d in enumerate(disc_info["titles"]):
             dlength = d["length"]
             if disc_type == disc_types["BD"]:
                 dsegmap = d["source_filename"]
             doutputfile = d["file_output"]
             ds = convert_sec(dlength)
             if ds and (ds == ts):
-                if count == tidx:
-                    if disc_type == disc_types["BD"]:
-                        segmap = dsegmap
-                    else:
-                        segmap = "found"
-                    track = dtrack
-                    output_file = doutputfile
-                count += 1
-        titlePlusExt = title + ".mkv"
+                if disc_type == disc_types["BD"]:
+                    match_segmap.append(dsegmap)
+                else:
+                    match_segmap.append("found")
+                match_track.append(dtrack)
+                match_output_file.append(doutputfile)
+        if len(match_track) > 1:
+            print(f"warning: more than one track has length of {tlength} found on disk")
         if not os.path.exists(titlePlusExt):
-            if not segmap:
+            if tidx >= len(match_track):
                 print("{} no segmap".format(title))
                 nosegmap.append(f" - {title},{tlength}")
             else:
+                track = match_track[tidx]
+                output_file = match_output_file[tidx]
+                segmap = match_segmap[tidx]
                 print(f"{title} {segmap}")
                 opts = {
                     "title": track,
