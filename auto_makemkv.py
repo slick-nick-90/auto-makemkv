@@ -129,6 +129,7 @@ def main(argv=sys.argv[1:]):
 
     tinfos = []
     extra_warn = []
+    length_warn = []
     with open(args.extras) as f:
         cinfos = csv.reader(f, delimiter=delimiter)
         for i in cinfos:
@@ -181,6 +182,7 @@ def main(argv=sys.argv[1:]):
                 match_output_file.append(d["file_output"])
         if len(match_track) > 1:
             print(f"warning: more than one track has length of {tlength} found on disk")
+            length_warn.append(f" - {title},{tlength}")
         if not os.path.exists(titlePlusExt):
             if tidx >= len(match_track):
                 print("{} no segmap".format(title))
@@ -203,6 +205,10 @@ def main(argv=sys.argv[1:]):
     if nosegmap:
         print("the following tracks were not matched, check the length:")
         print("\n".join(nosegmap))
+        print()
+    if length_warn:
+        print("the following tracks had multiple length matches:")
+        print("\n".join(length_warn))
         print()
 
 
