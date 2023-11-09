@@ -127,21 +127,21 @@ def main(argv=sys.argv[1:]):
     if not os.path.exists(outDir):
         os.makedirs(outDir)
 
-    tinfos = []
+    t_infos = []
     extra_warn = []
     length_warn = []
     with open(args.extras) as f:
-        cinfos = csv.reader(f, delimiter=delimiter)
-        for i in cinfos:
+        c_infos = csv.reader(f, delimiter=delimiter)
+        for i in c_infos:
             if not len(i) in [2, 3]:
                 raise Exception(f"missing track info at:\n    {i}")
-            tidx = 0
+            t_idx = 0
             if len(i) == 3:
-                tidx = int(i[2]) - 1
+                t_idx = int(i[2]) - 1
             if args.extra_warn and not any(i[0].endswith(s) for s in extra_end):
                 extra_warn.append(i[0])
             tmp = convert_sec(i[1])
-            tinfos.append([i[0], i[1], tmp, tidx])
+            t_infos.append([i[0], i[1], tmp, t_idx])
 
     if extra_warn:
         print("the following tracks were missing plex extra ending")
@@ -160,12 +160,12 @@ def main(argv=sys.argv[1:]):
     print(disc_info["disc"]["name"])
     disc_type = disc_types[disc_info["disc"]["type"]]
 
-    nosegmap = []
-    for tinfo in tinfos:
-        ttitle, tlength, ts, tidx = tinfo
-        if ttitle == "title":
+    no_segmap = []
+    for t_info in t_infos:
+        t_title, t_length, t_s, t_idx = t_info
+        if t_title == "title":
             continue
-        title = ttitle.replace(":", "").replace('"', "").replace("?", "")
+        title = t_title.replace(":", "").replace('"', "").replace("?", "")
         titlePlusExt = title + ".mkv"
         segmap = ""
         match_track = []
@@ -173,7 +173,7 @@ def main(argv=sys.argv[1:]):
         match_segmap = []
         for d_track, d in enumerate(disc_info["titles"]):
             ds = convert_sec(d["length"])
-            if ds and (ds == ts):
+            if ds and (ds == t_s):
                 if disc_type == disc_types["BD"]:
                     match_segmap.append(d["source_filename"])
                 else:
@@ -181,16 +181,16 @@ def main(argv=sys.argv[1:]):
                 match_track.append(d_track)
                 match_output_file.append(d["file_output"])
         if len(match_track) > 1:
-            print(f"warning: more than one track has length of {tlength} found on disk")
-            length_warn.append(f" - {title},{tlength}")
+            print(f"warning: more than one track has length of {t_length} found on disk")
+            length_warn.append(f" - {title},{t_length}")
         if not os.path.exists(titlePlusExt):
-            if tidx >= len(match_track):
+            if t_idx >= len(match_track):
                 print("{} no segmap".format(title))
-                nosegmap.append(f" - {title},{tlength}")
+                no_segmap.append(f" - {title},{t_length}")
             else:
-                track = match_track[tidx]
-                output_file = match_output_file[tidx]
-                segmap = match_segmap[tidx]
+                track = match_track[t_idx]
+                output_file = match_output_file[t_idx]
+                segmap = match_segmap[t_idx]
                 print(f"{title} {segmap}")
                 opts = {
                     "title": track,
@@ -202,9 +202,9 @@ def main(argv=sys.argv[1:]):
         else:
             print(f"skipping {titlePlusExt}, already exists")
 
-    if nosegmap:
+    if no_segmap:
         print("the following tracks were not matched, check the length:")
-        print("\n".join(nosegmap))
+        print("\n".join(no_segmap))
         print()
     if length_warn:
         print("the following tracks had multiple length matches:")
