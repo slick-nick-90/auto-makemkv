@@ -30,6 +30,15 @@ disc_types = {
     "BD": 1,
 }
 
+
+class Track_Info:
+     def __init__(self, title, length, s, idx):
+         self.title = title
+         self.length = length
+         self.s = s
+         self.idx = idx
+
+
 parser = ArgumentParser()
 for parser_arg in __init__.parser_args:
     parser.add_argument(*parser_arg["args"], **parser_arg["kwargs"])
@@ -141,7 +150,7 @@ def main(argv=sys.argv[1:]):
             if args.extra_warn and not any(i[0].endswith(s) for s in extra_end):
                 extra_warn.append(i[0])
             tmp = convert_sec(i[1])
-            t_infos.append([i[0], i[1], tmp, t_idx])
+            t_infos.append(Track_Info(i[0], i[1], tmp, t_idx))
 
     if extra_warn:
         print("the following tracks were missing plex extra ending")
@@ -162,10 +171,9 @@ def main(argv=sys.argv[1:]):
 
     no_segmap = []
     for t_info in t_infos:
-        t_title, t_length, t_s, t_idx = t_info
-        if t_title == "title":
+        if t_info.title == "title":
             continue
-        title = t_title.replace(":", "").replace('"', "").replace("?", "")
+        title = t_info.title.replace(":", "").replace('"', "").replace("?", "")
         titlePlusExt = title + ".mkv"
         segmap = ""
         match_track = []
@@ -173,7 +181,7 @@ def main(argv=sys.argv[1:]):
         match_segmap = []
         for d_track, d in enumerate(disc_info["titles"]):
             ds = convert_sec(d["length"])
-            if ds and (ds == t_s):
+            if ds and (ds == t_info.s):
                 if disc_type == disc_types["BD"]:
                     match_segmap.append(d["source_filename"])
                 else:
@@ -181,16 +189,16 @@ def main(argv=sys.argv[1:]):
                 match_track.append(d_track)
                 match_output_file.append(d["file_output"])
         if len(match_track) > 1:
-            print(f"warning: more than one track has length of {t_length} found on disk")
-            length_warn.append(f" - {title},{t_length}")
+            print(f"warning: more than one track has length of {t_info.length} found on disk")
+            length_warn.append(f" - {title},{t_info.length}")
         if not os.path.exists(titlePlusExt):
-            if t_idx >= len(match_track):
+            if t_info.idx >= len(match_track):
                 print("{} no segmap".format(title))
-                no_segmap.append(f" - {title},{t_length}")
+                no_segmap.append(f" - {title},{t_info.length}")
             else:
-                track = match_track[t_idx]
-                output_file = match_output_file[t_idx]
-                segmap = match_segmap[t_idx]
+                track = match_track[t_info.idx]
+                output_file = match_output_file[t_info.idx]
+                segmap = match_segmap[t_info.idx]
                 print(f"{title} {segmap}")
                 opts = {
                     "title": track,
