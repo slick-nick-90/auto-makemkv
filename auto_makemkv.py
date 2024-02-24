@@ -32,11 +32,12 @@ disc_types = {
 
 
 class Track_Info:
-     def __init__(self, title, length, s, idx):
+     def __init__(self, title, length, s, idx, defined_idx = False):
          self.title = title
          self.length = length
          self.s = s
          self.idx = idx
+         self.defined_idx = defined_idx
 
 
 parser = ArgumentParser()
@@ -142,15 +143,17 @@ def main(argv=sys.argv[1:]):
     with open(args.extras) as f:
         c_infos = csv.reader(f, delimiter=delimiter)
         for i in c_infos:
+            defined_idx = False
             if not len(i) in [2, 3]:
                 raise Exception(f"missing track info at:\n    {i}")
             t_idx = 0
             if len(i) == 3:
                 t_idx = int(i[2]) - 1
+                defined_idx = True
             if args.extra_warn and not any(i[0].endswith(s) for s in extra_end):
                 extra_warn.append(i[0])
             tmp = convert_sec(i[1])
-            t_infos.append(Track_Info(i[0], i[1], tmp, t_idx))
+            t_infos.append(Track_Info(i[0], i[1], tmp, t_idx, defined_idx))
 
     if extra_warn:
         print("the following tracks were missing plex extra ending")
@@ -188,7 +191,7 @@ def main(argv=sys.argv[1:]):
                     match_segmap.append("found")
                 match_track.append(d_track)
                 match_output_file.append(d["file_output"])
-        if len(match_track) > 1:
+        if t_info.defined_idx and len(match_track) > 1:
             print(f"warning: more than one track has length of {t_info.length} found on disk")
             length_warn.append(f" - {title},{t_info.length}")
         if not os.path.exists(titlePlusExt):
@@ -206,7 +209,7 @@ def main(argv=sys.argv[1:]):
                     "minlength": args.minlength,
                 }
                 mkv(args.progress_bar, ProgressParser, args.disc, opts)
-                os.rename(output_file, titlePlusExt)
+                os.rename(output_file.replace("Â", ""), titlePlusExt)
         else:
             print(f"skipping {titlePlusExt}, already exists")
 
