@@ -1,6 +1,4 @@
 from auto_makemkv import get_disc_info
-from auto_makemkv import parser as auto_makemkv_parser
-from auto_makemkv import mkv
 from auto_makemkv import main as auto_makemkv
 from makemkv.progress import ProgressParser
 from ast import literal_eval
