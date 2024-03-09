@@ -2,6 +2,7 @@ import csv
 import json
 import os
 import sys
+from dataclasses import dataclass
 from configparser import ConfigParser
 from argparse import ArgumentParser
 from makemkv import MakeMKV
@@ -30,10 +31,24 @@ disc_types = {
     "BD": 1,
 }
 
+
+@dataclass
+class Track_Info():
+    title: str
+    length: str
+    s: int
+    idx: int
+    defined_idx: bool
+
+
 parser = ArgumentParser()
 for parser_arg in __init__.parser_args:
     parser.add_argument(*parser_arg["args"], **parser_arg["kwargs"])
 
+def clean_name(name):
+    # remove special characters
+    name.replace("Â", "")
+    return name
 
 def convert_sec(duration):
     # https://stackoverflow.com/questions/6402812/how-to-convert-an-hmmss-time-string-to-seconds-in-python
@@ -115,7 +130,7 @@ def main(argv=sys.argv[1:]):
     delimiter = delims[Path(args.extras).suffix]
 
     if args.progress_bar:
-        from makemkv import ProgressParser
+        from makemkv.progress import ProgressParser
     else:
         ProgressParser = None
 
@@ -127,20 +142,23 @@ def main(argv=sys.argv[1:]):
     if not os.path.exists(outDir):
         os.makedirs(outDir)
 
-    tinfos = []
+    t_infos = []
     extra_warn = []
+    length_warn = []
     with open(args.extras) as f:
-        cinfos = csv.reader(f, delimiter=delimiter)
-        for i in cinfos:
+        c_infos = csv.reader(f, delimiter=delimiter)
+        for i in c_infos:
+            defined_idx = False
             if not len(i) in [2, 3]:
                 raise Exception(f"missing track info at:\n    {i}")
-            tidx = 0
+            t_idx = 0
             if len(i) == 3:
-                tidx = int(i[2]) - 1
+                t_idx = int(i[2]) - 1
+                defined_idx = True
             if args.extra_warn and not any(i[0].endswith(s) for s in extra_end):
                 extra_warn.append(i[0])
             tmp = convert_sec(i[1])
-            tinfos.append([i[0], i[1], tmp, tidx])
+            t_infos.append(Track_Info(i[0], i[1], tmp, t_idx, defined_idx))
 
     if extra_warn:
         print("the following tracks were missing plex extra ending")
@@ -159,12 +177,11 @@ def main(argv=sys.argv[1:]):
     print(disc_info["disc"]["name"])
     disc_type = disc_types[disc_info["disc"]["type"]]
 
-    nosegmap = []
-    for tinfo in tinfos:
-        ttitle, tlength, ts, tidx = tinfo
-        if ttitle == "title":
+    no_segmap = []
+    for t_info in t_infos:
+        if t_info.title == "title":
             continue
-        title = ttitle.replace(":", "").replace('"', "").replace("?", "")
+        title = t_info.title.replace(":", "").replace('"', "").replace("?", "")
         titlePlusExt = title + ".mkv"
         segmap = ""
         match_track = []
@@ -172,23 +189,24 @@ def main(argv=sys.argv[1:]):
         match_segmap = []
         for d_track, d in enumerate(disc_info["titles"]):
             ds = convert_sec(d["length"])
-            if ds and (ds == ts):
+            if ds and (ds == t_info.s):
                 if disc_type == disc_types["BD"]:
                     match_segmap.append(d["source_filename"])
                 else:
                     match_segmap.append("found")
                 match_track.append(d_track)
                 match_output_file.append(d["file_output"])
-        if len(match_track) > 1:
-            print(f"warning: more than one track has length of {tlength} found on disk")
+        if t_info.defined_idx and len(match_track) > 1:
+            print(f"warning: more than one track has length of {t_info.length} found on disk")
+            length_warn.append(f" - {title},{t_info.length}")
         if not os.path.exists(titlePlusExt):
-            if tidx >= len(match_track):
+            if t_info.idx >= len(match_track):
                 print("{} no segmap".format(title))
-                nosegmap.append(f" - {title},{tlength}")
+                no_segmap.append(f" - {title},{t_info.length}")
             else:
-                track = match_track[tidx]
-                output_file = match_output_file[tidx]
-                segmap = match_segmap[tidx]
+                track = match_track[t_info.idx]
+                output_file = match_output_file[t_info.idx]
+                segmap = match_segmap[t_info.idx]
                 print(f"{title} {segmap}")
                 opts = {
                     "title": track,
@@ -196,13 +214,17 @@ def main(argv=sys.argv[1:]):
                     "minlength": args.minlength,
                 }
                 mkv(args.progress_bar, ProgressParser, args.disc, opts)
-                os.rename(output_file, titlePlusExt)
+                os.rename(clean_name(output_file), titlePlusExt)
         else:
             print(f"skipping {titlePlusExt}, already exists")
 
-    if nosegmap:
+    if no_segmap:
         print("the following tracks were not matched, check the length:")
-        print("\n".join(nosegmap))
+        print("\n".join(no_segmap))
+        print()
+    if length_warn:
+        print("the following tracks had multiple length matches:")
+        print("\n".join(length_warn))
         print()
 
 
