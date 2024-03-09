@@ -2,6 +2,7 @@ import csv
 import json
 import os
 import sys
+from dataclasses import dataclass
 from configparser import ConfigParser
 from argparse import ArgumentParser
 from makemkv import MakeMKV
@@ -31,13 +32,13 @@ disc_types = {
 }
 
 
-class Track_Info:
-     def __init__(self, title, length, s, idx, defined_idx = False):
-         self.title = title
-         self.length = length
-         self.s = s
-         self.idx = idx
-         self.defined_idx = defined_idx
+@dataclass
+class Track_Info():
+    title: str
+    length: str
+    s: int
+    idx: int
+    defined_idx: bool
 
 
 parser = ArgumentParser()
