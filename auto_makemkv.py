@@ -45,6 +45,10 @@ parser = ArgumentParser()
 for parser_arg in __init__.parser_args:
     parser.add_argument(*parser_arg["args"], **parser_arg["kwargs"])
 
+def clean_name(name):
+    # remove special characters
+    name.replace("Â", "")
+    return name
 
 def convert_sec(duration):
     # https://stackoverflow.com/questions/6402812/how-to-convert-an-hmmss-time-string-to-seconds-in-python
@@ -210,7 +214,7 @@ def main(argv=sys.argv[1:]):
                     "minlength": args.minlength,
                 }
                 mkv(args.progress_bar, ProgressParser, args.disc, opts)
-                os.rename(output_file.replace("Â", ""), titlePlusExt)
+                os.rename(clean_name(output_file), titlePlusExt)
         else:
             print(f"skipping {titlePlusExt}, already exists")
 
