@@ -125,7 +125,7 @@ def main(argv=sys.argv[1:]):
     delimiter = delims[Path(args.extras).suffix]
 
     if args.progress_bar:
-        from makemkv import ProgressParser
+        from makemkv.progress import ProgressParser
     else:
         ProgressParser = None
 
