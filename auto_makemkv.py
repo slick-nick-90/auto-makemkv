@@ -10,6 +10,19 @@ from pathlib import Path
 from time import sleep
 import __init__
 
+
+import asyncio
+from datetime import timedelta
+
+
+from logging import INFO, getLogger, StreamHandler
+from tqdm import tqdm
+
+from mmkv_abi.drive_info.drive_state import DriveState
+from mmkv_abi.mmkv import MakeMKV
+from mmkv_abi.app_string import AppString
+
+
 delims = {
     ".tsv": "\t",
     ".csv": ",",
@@ -32,8 +45,39 @@ disc_types = {
 }
 
 
+def setup_logger(log_level):
+    logger = getLogger(__name__)
+    logger.setLevel(log_level)
+
+    handler = StreamHandler(sys.stdout)
+    handler.setLevel(log_level)
+
+    logger.addHandler(handler)
+    return logger
+
+
+async def wait_for_disc_inserted(makemkv):
+    while True:
+        drives = [
+            v for v in makemkv.drives.values() if v.drive_state is DriveState.Inserted
+        ]
+        if len(drives) > 0:
+            drive = drives[0]
+            await makemkv.open_cd_disk(drive.drive_id)
+            break
+
+        await makemkv.idle()
+        await asyncio.sleep(0.25)
+
+
+async def wait_for_titles_populated(makemkv):
+    while makemkv.titles is None:
+        await makemkv.idle()
+        await asyncio.sleep(0.25)
+
+
 @dataclass
-class Track_Info():
+class Track_Info:
     title: str
     length: str
     s: int
@@ -45,17 +89,17 @@ parser = ArgumentParser()
 for parser_arg in __init__.parser_args:
     parser.add_argument(*parser_arg["args"], **parser_arg["kwargs"])
 
+
 def clean_name(name):
     # remove special characters
     name.replace("Â", "")
     return name
 
+
 def convert_sec(duration):
     # https://stackoverflow.com/questions/6402812/how-to-convert-an-hmmss-time-string-to-seconds-in-python
     try:
-        secs = sum(
-            int(x) * 60**i for i, x in enumerate(reversed(duration.split(":")))
-        )
+        secs = sum(int(x) * 60**i for i, x in enumerate(reversed(duration.split(":"))))
     except:
         raise Exception(f"cannot convert '{duration}' to sec")
     return secs
@@ -124,10 +168,13 @@ def get_disc_info(extras_base, ProgressParser, args):
     return disc_info
 
 
-def main(argv=sys.argv[1:]):
+async def main(argv=sys.argv[1:]):
     args = parser.parse_args(argv)
 
     delimiter = delims[Path(args.extras).suffix]
+
+    makemkv = MakeMKV(setup_logger(INFO))
+    await makemkv.init()
 
     if args.progress_bar:
         from makemkv.progress import ProgressParser
@@ -177,6 +224,15 @@ def main(argv=sys.argv[1:]):
     print(disc_info["disc"]["name"])
     disc_type = disc_types[disc_info["disc"]["type"]]
 
+    await makemkv.set_output_folder("~/Videos")
+    await makemkv.update_avalible_drives()
+
+    print("Waiting for disc...")
+    await wait_for_disc_inserted(makemkv)
+
+    print("Waiting for titles...")
+    await wait_for_titles_populated(makemkv)
+
     no_segmap = []
     for t_info in t_infos:
         if t_info.title == "title":
@@ -197,7 +253,9 @@ def main(argv=sys.argv[1:]):
                 match_track.append(d_track)
                 match_output_file.append(d["file_output"])
         if t_info.defined_idx and len(match_track) > 1:
-            print(f"warning: more than one track has length of {t_info.length} found on disk")
+            print(
+                f"warning: more than one track has length of {t_info.length} found on disk"
+            )
             length_warn.append(f" - {title},{t_info.length}")
         if not os.path.exists(titlePlusExt):
             if t_info.idx >= len(match_track):
