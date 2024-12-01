@@ -221,13 +221,11 @@ def main(argv=sys.argv[1:]):
                     "titlePlusExt": titlePlusExt,
                     "segmap": segmap,
                     "output_file": output_file,
-
-
                 }
         else:
             print(f"skipping {titlePlusExt}, already exists")
 
-    print(f"{len(to_be_ripped.keys)} tracks to be processed ")
+    print(f"{len(to_be_ripped.keys())} tracks to be processed ")
     for title in to_be_ripped:
         print(f"{title} {to_be_ripped[title]["segmap"]}")
         mkv(*to_be_ripped[title]["mkv_in"])
