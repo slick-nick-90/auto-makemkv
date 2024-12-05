@@ -234,6 +234,7 @@ async def main(argv=sys.argv[1:]):
     await wait_for_titles_populated(makemkv)
 
     no_segmap = []
+    to_be_ripped = {}
     for t_info in t_infos:
         if t_info.title == "title":
             continue
@@ -265,16 +266,26 @@ async def main(argv=sys.argv[1:]):
                 track = match_track[t_info.idx]
                 output_file = match_output_file[t_info.idx]
                 segmap = match_segmap[t_info.idx]
-                print(f"{title} {segmap}")
+
                 opts = {
                     "title": track,
                     "output_dir": ".",
                     "minlength": args.minlength,
                 }
-                mkv(args.progress_bar, ProgressParser, args.disc, opts)
-                os.rename(clean_name(output_file), titlePlusExt)
+                to_be_ripped[title] = {
+                    "mkv_in": [args.progress_bar, ProgressParser, args.disc, opts],
+                    "titlePlusExt": titlePlusExt,
+                    "segmap": segmap,
+                    "output_file": output_file,
+                }
         else:
             print(f"skipping {titlePlusExt}, already exists")
+
+    print(f"{len(to_be_ripped.keys())} tracks to be processed ")
+    for title in to_be_ripped:
+        print(f"{title} {to_be_ripped[title]["segmap"]}")
+        mkv(*to_be_ripped[title]["mkv_in"])
+        os.rename(clean_name(to_be_ripped[title]["output_file"]), to_be_ripped[title]["titlePlusExt"])
 
     if no_segmap:
         print("the following tracks were not matched, check the length:")
