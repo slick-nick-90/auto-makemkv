@@ -219,10 +219,10 @@ async def main(argv=sys.argv[1:]):
 
     extras_base = os.path.basename(os.path.splitext(args.extras)[0])
 
-    disc_info = get_disc_info(extras_base, ProgressParser, args)
+    # disc_info = get_disc_info(extras_base, ProgressParser, args)
 
-    print(disc_info["disc"]["name"])
-    disc_type = disc_types[disc_info["disc"]["type"]]
+    # print(disc_info["disc"]["name"])
+    # disc_type = disc_types[disc_info["disc"]["type"]]
 
     await makemkv.set_output_folder("~/Videos")
     await makemkv.update_avalible_drives()
@@ -232,6 +232,11 @@ async def main(argv=sys.argv[1:]):
 
     print("Waiting for titles...")
     await wait_for_titles_populated(makemkv)
+
+
+    for title in makemkv.titles:
+        duration = await title.get_duration()
+        # await title.set_enabled(duration > lower_bound and duration < upper_bound)
 
     no_segmap = []
     to_be_ripped = {}
@@ -298,4 +303,4 @@ async def main(argv=sys.argv[1:]):
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
