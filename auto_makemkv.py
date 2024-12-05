@@ -233,10 +233,15 @@ async def main(argv=sys.argv[1:]):
     print("Waiting for titles...")
     await wait_for_titles_populated(makemkv)
 
+    disc_info = {
+        "titles": []
+    }
 
     for title in makemkv.titles:
-        duration = await title.get_duration()
-        # await title.set_enabled(duration > lower_bound and duration < upper_bound)
+        disc_info["titles"].append({
+            "file_output": await title.get_output_file_name(),
+            "length": str(await title.get_duration()),
+        })
 
     no_segmap = []
     to_be_ripped = {}
@@ -252,10 +257,7 @@ async def main(argv=sys.argv[1:]):
         for d_track, d in enumerate(disc_info["titles"]):
             ds = convert_sec(d["length"])
             if ds and (ds == t_info.s):
-                if disc_type == disc_types["BD"]:
-                    match_segmap.append(d["source_filename"])
-                else:
-                    match_segmap.append("found")
+                match_segmap.append("found")
                 match_track.append(d_track)
                 match_output_file.append(d["file_output"])
         if t_info.defined_idx and len(match_track) > 1:
