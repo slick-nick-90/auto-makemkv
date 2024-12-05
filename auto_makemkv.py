@@ -224,7 +224,7 @@ async def main(argv=sys.argv[1:]):
     # print(disc_info["disc"]["name"])
     # disc_type = disc_types[disc_info["disc"]["type"]]
 
-    await makemkv.set_output_folder("~/Videos")
+    await makemkv.set_output_folder(".")
     await makemkv.update_avalible_drives()
 
     print("Waiting for disc...")
@@ -291,7 +291,11 @@ async def main(argv=sys.argv[1:]):
     print(f"{len(to_be_ripped.keys())} tracks to be processed ")
     for title in to_be_ripped:
         print(f"{title} {to_be_ripped[title]["segmap"]}")
-        mkv(*to_be_ripped[title]["mkv_in"])
+        # mkv(*to_be_ripped[title]["mkv_in"])
+        for i, t in enumerate(makemkv.titles):
+            await t.set_enabled(i==to_be_ripped[title]["mkv_in"][3]["title"])
+
+        await makemkv.save_all_selected_to_mkv()
         os.rename(clean_name(to_be_ripped[title]["output_file"]), to_be_ripped[title]["titlePlusExt"])
 
     if no_segmap:
