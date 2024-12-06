@@ -173,9 +173,6 @@ async def main(argv=sys.argv[1:]):
 
     delimiter = delims[Path(args.extras).suffix]
 
-    makemkv = MakeMKV(setup_logger(INFO))
-    await makemkv.init()
-
     if args.progress_bar:
         from makemkv.progress import ProgressParser
     else:
@@ -215,16 +212,19 @@ async def main(argv=sys.argv[1:]):
             print(f"continuing in {i} seconds")
             sleep(1)
 
-    os.chdir(outDir)
+    os.chdir(".")
 
-    extras_base = os.path.basename(os.path.splitext(args.extras)[0])
+    makemkv = MakeMKV(setup_logger(INFO))
+    await makemkv.init()
+
+    # extras_base = os.path.basename(os.path.splitext(args.extras)[0])
 
     # disc_info = get_disc_info(extras_base, ProgressParser, args)
 
     # print(disc_info["disc"]["name"])
     # disc_type = disc_types[disc_info["disc"]["type"]]
 
-    await makemkv.set_output_folder(".")
+    await makemkv.set_output_folder(outDir)
     await makemkv.update_avalible_drives()
 
     print("Waiting for disc...")
@@ -295,7 +295,25 @@ async def main(argv=sys.argv[1:]):
         for i, t in enumerate(makemkv.titles):
             await t.set_enabled(i==to_be_ripped[title]["mkv_in"][3]["title"])
 
+        # print('\n\nTitle Tree:')
+        # await makemkv.titles.print()
+
         await makemkv.save_all_selected_to_mkv()
+
+        with tqdm(total=65536) as pbar:
+            while makemkv.job_mode:
+                if pbar.n > makemkv.total_bar:
+                    pbar.reset()
+                    pbar.update(makemkv.total_bar)
+                else:
+                    pbar.update(makemkv.total_bar - pbar.n)
+
+                pbar.set_description(makemkv.current_info[4])
+                pbar.set_postfix_str(makemkv.current_info[3])
+
+                await makemkv.idle()
+                await asyncio.sleep(0.25)
+        
         os.rename(clean_name(to_be_ripped[title]["output_file"]), to_be_ripped[title]["titlePlusExt"])
 
     if no_segmap:
