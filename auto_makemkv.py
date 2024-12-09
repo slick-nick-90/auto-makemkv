@@ -10,6 +10,19 @@ from pathlib import Path
 from time import sleep
 import __init__
 
+
+import asyncio
+from datetime import timedelta
+
+
+from logging import INFO, getLogger, StreamHandler
+from tqdm import tqdm
+
+from mmkv_abi.drive_info.drive_state import DriveState
+from mmkv_abi.mmkv import MakeMKV
+from mmkv_abi.app_string import AppString
+
+
 delims = {
     ".tsv": "\t",
     ".csv": ",",
@@ -30,6 +43,37 @@ disc_types = {
     "DVD": 0,
     "BD": 1,
 }
+
+
+def setup_logger(log_level):
+    logger = getLogger(__name__)
+    logger.setLevel(log_level)
+
+    handler = StreamHandler(sys.stdout)
+    handler.setLevel(log_level)
+
+    logger.addHandler(handler)
+    return logger
+
+
+async def wait_for_disc_inserted(makemkv):
+    while True:
+        drives = [
+            v for v in makemkv.drives.values() if v.drive_state is DriveState.Inserted
+        ]
+        if len(drives) > 0:
+            drive = drives[0]
+            await makemkv.open_cd_disk(drive.drive_id)
+            break
+
+        await makemkv.idle()
+        await asyncio.sleep(0.25)
+
+
+async def wait_for_titles_populated(makemkv):
+    while makemkv.titles is None:
+        await makemkv.idle()
+        await asyncio.sleep(0.25)
 
 
 @dataclass
@@ -90,7 +134,8 @@ def mkv(progress_bar, ProgressParser, disc, opts):
         makemkv.mkv(**opts)
 
 
-def get_disc_info(extras_base, ProgressParser, args):
+async def get_disc_info(extras_base, ProgressParser, args):
+    makemkv = None
     makemkv_log = extras_base + ".log"
     makemkv_jsn = extras_base + ".json"
     makemkv_ini = extras_base + ".ini"
@@ -111,7 +156,8 @@ def get_disc_info(extras_base, ProgressParser, args):
             print(f"    minlength = {args.minlength}")
     else:
         opts = {"minlength": args.minlength}
-        disc_info = info(args.progress_bar, ProgressParser, args.disc, opts)
+        makemkv = await init_mmkv('.')
+        disc_info = await makemkv.titles.get_json_info()
         with open(makemkv_jsn, "w") as f:
             json.dump(disc_info, f, indent=2, sort_keys=True)
         if args.minlength != 40:
@@ -121,10 +167,26 @@ def get_disc_info(extras_base, ProgressParser, args):
             with open(makemkv_ini, "w") as f:
                 config.write(f)
 
-    return disc_info
+    return disc_info, makemkv
+
+async def init_mmkv(outDir):
+    makemkv = MakeMKV(setup_logger(INFO))
+    await makemkv.init()
+
+    await makemkv.set_output_folder(outDir)
+    await makemkv.update_avalible_drives()
+
+    print("Waiting for disc...")
+    await wait_for_disc_inserted(makemkv)
+
+    print("Waiting for titles...")
+    await wait_for_titles_populated(makemkv)
+
+    return makemkv
 
 
-def main(argv=sys.argv[1:]):
+
+async def main(argv=sys.argv[1:]):
     args = parser.parse_args(argv)
 
     delimiter = delims[Path(args.extras).suffix]
@@ -172,10 +234,14 @@ def main(argv=sys.argv[1:]):
 
     extras_base = os.path.basename(os.path.splitext(args.extras)[0])
 
-    disc_info = get_disc_info(extras_base, ProgressParser, args)
+    disc_info, makemkv = await get_disc_info(extras_base, ProgressParser, args)
 
-    print(disc_info["disc"]["name"])
-    disc_type = disc_types[disc_info["disc"]["type"]]
+    # print(disc_info["disc"]["name"])
+    # disc_type = disc_types[disc_info["disc"]["type"]]
+
+
+    # print("converting titles to json")
+    # disc_info = await makemkv.titles.get_json_info()
 
     no_segmap = []
     to_be_ripped = {}
@@ -191,10 +257,7 @@ def main(argv=sys.argv[1:]):
         for d_track, d in enumerate(disc_info["titles"]):
             ds = convert_sec(d["length"])
             if ds and (ds == t_info.s):
-                if disc_type == disc_types["BD"]:
-                    match_segmap.append(d["source_filename"])
-                else:
-                    match_segmap.append("found")
+                match_segmap.append("found")
                 match_track.append(d_track)
                 match_output_file.append(d["file_output"])
         if t_info.defined_idx and len(match_track) > 1:
@@ -224,11 +287,36 @@ def main(argv=sys.argv[1:]):
                 }
         else:
             print(f"skipping {titlePlusExt}, already exists")
-
-    print(f"{len(to_be_ripped.keys())} tracks to be processed ")
+    num_to_be_processed = len(to_be_ripped.keys())
+    print(f"{num_to_be_processed} tracks to be processed")
+    if num_to_be_processed > 0:
+        if not makemkv:
+            makemkv = await init_mmkv(".")
     for title in to_be_ripped:
         print(f"{title} {to_be_ripped[title]["segmap"]}")
-        mkv(*to_be_ripped[title]["mkv_in"])
+        # mkv(*to_be_ripped[title]["mkv_in"])
+        for i, t in enumerate(makemkv.titles):
+            await t.set_enabled(i==to_be_ripped[title]["mkv_in"][3]["title"])
+
+        # print('\n\nTitle Tree:')
+        # await makemkv.titles.print()
+
+        await makemkv.save_all_selected_to_mkv()
+
+        with tqdm(total=65536) as pbar:
+            while makemkv.job_mode:
+                if pbar.n > makemkv.total_bar:
+                    pbar.reset()
+                    pbar.update(makemkv.total_bar)
+                else:
+                    pbar.update(makemkv.total_bar - pbar.n)
+
+                pbar.set_description(makemkv.current_info[4])
+                pbar.set_postfix_str(makemkv.current_info[3])
+
+                await makemkv.idle()
+                await asyncio.sleep(0.25)
+        
         os.rename(clean_name(to_be_ripped[title]["output_file"]), to_be_ripped[title]["titlePlusExt"])
 
     if no_segmap:
@@ -242,4 +330,4 @@ def main(argv=sys.argv[1:]):
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
