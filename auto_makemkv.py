@@ -9,6 +9,7 @@ from makemkv import MakeMKV
 from pathlib import Path
 from time import sleep
 import __init__
+from contextlib import chdir
 
 
 import asyncio
@@ -230,103 +231,103 @@ async def main(argv=sys.argv[1:]):
             print(f"continuing in {i} seconds")
             sleep(1)
 
-    os.chdir(outDir)
+    with chdir(outDir):
 
-    extras_base = os.path.basename(os.path.splitext(args.extras)[0])
+        extras_base = os.path.basename(os.path.splitext(args.extras)[0])
 
-    disc_info, makemkv = await get_disc_info(extras_base, ProgressParser, args)
+        disc_info, makemkv = await get_disc_info(extras_base, ProgressParser, args)
 
-    # print(disc_info["disc"]["name"])
-    # disc_type = disc_types[disc_info["disc"]["type"]]
+        # print(disc_info["disc"]["name"])
+        # disc_type = disc_types[disc_info["disc"]["type"]]
 
 
-    # print("converting titles to json")
-    # disc_info = await makemkv.titles.get_json_info()
+        # print("converting titles to json")
+        # disc_info = await makemkv.titles.get_json_info()
 
-    no_segmap = []
-    to_be_ripped = {}
-    for t_info in t_infos:
-        if t_info.title == "title":
-            continue
-        title = t_info.title.replace(":", "-").replace('"', "").replace("?", "")
-        titlePlusExt = title + ".mkv"
-        segmap = ""
-        match_track = []
-        match_output_file = []
-        match_segmap = []
-        for d_track, d in enumerate(disc_info["titles"]):
-            ds = convert_sec(d["length"])
-            if ds and (ds == t_info.s):
-                match_segmap.append("found")
-                match_track.append(d_track)
-                match_output_file.append(d["file_output"])
-        if not t_info.defined_idx and len(match_track) > 1:
-            print(
-                f"warning: more than one track has length of {t_info.length} found on disk"
-            )
-            length_warn.append(f" - {title},{t_info.length}")
-        if not os.path.exists(titlePlusExt):
-            if t_info.idx >= len(match_track):
-                print("{} no segmap".format(title))
-                no_segmap.append(f" - {title},{t_info.length}")
-            else:
-                track = match_track[t_info.idx]
-                output_file = match_output_file[t_info.idx]
-                segmap = match_segmap[t_info.idx]
-
-                opts = {
-                    "title": track,
-                    "output_dir": ".",
-                    "minlength": args.minlength,
-                }
-                to_be_ripped[title] = {
-                    "mkv_in": [args.progress_bar, ProgressParser, args.disc, opts],
-                    "titlePlusExt": titlePlusExt,
-                    "segmap": segmap,
-                    "output_file": output_file,
-                }
-        else:
-            print(f"skipping {titlePlusExt}, already exists")
-    num_to_be_processed = len(to_be_ripped.keys())
-    print(f"{num_to_be_processed} tracks to be processed")
-    if num_to_be_processed > 0:
-        if not makemkv:
-            makemkv = await init_mmkv(".")
-    for title in to_be_ripped:
-        print(f"{title} {to_be_ripped[title]["segmap"]}")
-        # mkv(*to_be_ripped[title]["mkv_in"])
-        for i, t in enumerate(makemkv.titles):
-            await t.set_enabled(i==to_be_ripped[title]["mkv_in"][3]["title"])
-
-        # print('\n\nTitle Tree:')
-        # await makemkv.titles.print()
-
-        await makemkv.save_all_selected_to_mkv()
-
-        with tqdm(total=65536) as pbar:
-            while makemkv.job_mode:
-                if pbar.n > makemkv.total_bar:
-                    pbar.reset()
-                    pbar.update(makemkv.total_bar)
+        no_segmap = []
+        to_be_ripped = {}
+        for t_info in t_infos:
+            if t_info.title == "title":
+                continue
+            title = t_info.title.replace(":", "-").replace('"', "").replace("?", "")
+            titlePlusExt = title + ".mkv"
+            segmap = ""
+            match_track = []
+            match_output_file = []
+            match_segmap = []
+            for d_track, d in enumerate(disc_info["titles"]):
+                ds = convert_sec(d["length"])
+                if ds and (ds == t_info.s):
+                    match_segmap.append("found")
+                    match_track.append(d_track)
+                    match_output_file.append(d["file_output"])
+            if not t_info.defined_idx and len(match_track) > 1:
+                print(
+                    f"warning: more than one track has length of {t_info.length} found on disk"
+                )
+                length_warn.append(f" - {title},{t_info.length}")
+            if not os.path.exists(titlePlusExt):
+                if t_info.idx >= len(match_track):
+                    print("{} no segmap".format(title))
+                    no_segmap.append(f" - {title},{t_info.length}")
                 else:
-                    pbar.update(makemkv.total_bar - pbar.n)
+                    track = match_track[t_info.idx]
+                    output_file = match_output_file[t_info.idx]
+                    segmap = match_segmap[t_info.idx]
 
-                pbar.set_description(makemkv.current_info[4])
-                pbar.set_postfix_str(makemkv.current_info[3])
+                    opts = {
+                        "title": track,
+                        "output_dir": ".",
+                        "minlength": args.minlength,
+                    }
+                    to_be_ripped[title] = {
+                        "mkv_in": [args.progress_bar, ProgressParser, args.disc, opts],
+                        "titlePlusExt": titlePlusExt,
+                        "segmap": segmap,
+                        "output_file": output_file,
+                    }
+            else:
+                print(f"skipping {titlePlusExt}, already exists")
+        num_to_be_processed = len(to_be_ripped.keys())
+        print(f"{num_to_be_processed} tracks to be processed")
+        if num_to_be_processed > 0:
+            if not makemkv:
+                makemkv = await init_mmkv(".")
+        for title in to_be_ripped:
+            print(f"{title} {to_be_ripped[title]["segmap"]}")
+            # mkv(*to_be_ripped[title]["mkv_in"])
+            for i, t in enumerate(makemkv.titles):
+                await t.set_enabled(i==to_be_ripped[title]["mkv_in"][3]["title"])
 
-                await makemkv.idle()
-                await asyncio.sleep(0.25)
-        
-        os.rename(clean_name(to_be_ripped[title]["output_file"]), to_be_ripped[title]["titlePlusExt"])
+            # print('\n\nTitle Tree:')
+            # await makemkv.titles.print()
 
-    if no_segmap:
-        print("the following tracks were not matched, check the length:")
-        print("\n".join(no_segmap))
-        print()
-    if length_warn:
-        print("the following tracks had multiple length matches:")
-        print("\n".join(length_warn))
-        print()
+            await makemkv.save_all_selected_to_mkv()
+
+            with tqdm(total=65536) as pbar:
+                while makemkv.job_mode:
+                    if pbar.n > makemkv.total_bar:
+                        pbar.reset()
+                        pbar.update(makemkv.total_bar)
+                    else:
+                        pbar.update(makemkv.total_bar - pbar.n)
+
+                    pbar.set_description(makemkv.current_info[4])
+                    pbar.set_postfix_str(makemkv.current_info[3])
+
+                    await makemkv.idle()
+                    await asyncio.sleep(0.25)
+            
+            os.rename(clean_name(to_be_ripped[title]["output_file"]), to_be_ripped[title]["titlePlusExt"])
+
+        if no_segmap:
+            print("the following tracks were not matched, check the length:")
+            print("\n".join(no_segmap))
+            print()
+        if length_warn:
+            print("the following tracks had multiple length matches:")
+            print("\n".join(length_warn))
+            print()
 
 
 if __name__ == "__main__":
