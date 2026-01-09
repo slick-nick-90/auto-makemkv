@@ -108,7 +108,7 @@ def convert_sec(duration):
 def parse_makemkv(input_file, disc):
     with open(input_file) as f:
         content = f.read().replace("\n\r", "\n")
-    makemkv = MakeMKV(disc)
+    makemkv = MakeMKV()
     disc_info = makemkv._parse_makemkv_log(content.split("\n"))
     return disc_info
 
@@ -248,7 +248,7 @@ async def main(argv=sys.argv[1:]):
     for t_info in t_infos:
         if t_info.title == "title":
             continue
-        title = t_info.title.replace(":", "").replace('"', "").replace("?", "")
+        title = t_info.title.replace(":", "-").replace('"', "").replace("?", "")
         titlePlusExt = title + ".mkv"
         segmap = ""
         match_track = []
@@ -260,7 +260,7 @@ async def main(argv=sys.argv[1:]):
                 match_segmap.append("found")
                 match_track.append(d_track)
                 match_output_file.append(d["file_output"])
-        if t_info.defined_idx and len(match_track) > 1:
+        if not t_info.defined_idx and len(match_track) > 1:
             print(
                 f"warning: more than one track has length of {t_info.length} found on disk"
             )
